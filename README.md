@@ -1,40 +1,54 @@
 # HDFC mutual fund FAQ assistant
 
-A small Streamlit RAG prototype for factual FAQs about the HDFC Mutual Fund overview and four requested schemes. Answers are limited to three sentences, cite a source URL, and show the source fetch date. The assistant does not provide recommendations or performance comparisons.
+A facts-only FAQ prototype for five HDFC mutual-fund pages. The Vercel deployment uses a FastAPI API, a static browser UI, OpenAI embeddings, and Chroma Cloud. It does not provide investment advice or save questions and answers.
 
-## Run locally
+## Deploy on Vercel
 
-1. Use Python 3.11 or newer.
-2. Create and activate a virtual environment.
-3. Install dependencies: `pip install -r requirements.txt`.
-4. Add the API key for your chosen provider to `.env` (copy `.env.example` as a starting point). The app loads `.env` at startup; existing environment variables take precedence. Keep `.env` private and never commit it.
-5. Start with `streamlit run app.py`.
-6. In the sidebar, click **Run all ingestion phases**. This fetches only the five configured URLs and writes each stage under `data/`.
-7. Ask a factual scheme question. Set the desired provider in the sidebar.
+1. Create a [Chroma Cloud](https://trychroma.com/) database. In its **Connect** panel, copy the API key, tenant ID, database name, and (if shown) regional host.
+2. In Vercel, import `diyachokshi25-dot/Growfolio` from GitHub. Use the repository root and keep the detected Python runtime/default build settings. The root `app.py` exports the FastAPI `app`; `public/index.html` is the browser UI.
+3. In **Project Settings → Environment Variables**, add these as **Secret** values for Production (and Preview if you use preview deployments):
 
-## Scope and phases
+   | Name | Value |
+   | --- | --- |
+   | `OPENAI_API_KEY` | OpenAI API key. Used for embeddings and, by default, answer generation. |
+   | `CHROMA_API_KEY` | Chroma Cloud API key |
+   | `CHROMA_TENANT` | Chroma Cloud tenant ID |
+   | `CHROMA_DATABASE` | Chroma Cloud database name |
+   | `CHROMA_HOST` | Optional regional host; leave unset for the default AWS US East region. |
+   | `GEMINI_API_KEY` | Optional, only if using Gemini instead of OpenAI |
+   | `ANTHROPIC_API_KEY` | Optional, only if using Anthropic |
+   | `MISTRAL_API_KEY` | Optional, only if using Mistral |
 
-The source allowlist is in `config.yaml`. The ingester makes direct requests to those five Groww URLs and does not follow or fetch linked pages.
+   Do not add a `NEXT_PUBLIC_` prefix, paste keys into source files, or commit `.env`.
+4. Deploy. Vercel's Python runtime detects the FastAPI `app` in `app.py`; static files are served from `public/`.
+5. Before asking questions, populate Chroma Cloud once from a trusted local machine:
 
-1. **Scraping** — fetched page text and source metadata in `data/01_raw/pages.json`; only the five configured URLs are requested.
-2. **Document loading** — reads and validates the saved raw pages without network access, then writes `loaded_documents.json` and `load_manifest.json` under `data/01_raw/`.
-3. **Chunking** — section-aware text chunks (configured by `chunking.max_chars`) in `data/02_chunks/chunks.json`; common returns/ranking sections are excluded.
-4. **Embedding** — embeddings are created with the configured Sentence Transformers model, validated, and persisted with model fingerprint and dimension in `data/03_embeddings/embeddings.json`.
-5. **Vector DB** — ChromaDB stores chunks and metadata in a generation-specific collection under `data/04_vector_db/chroma`; the manifest points to the validated active collection.
-6. **Retrieval and answer** — query embedding uses the same configured model and the same Chroma collection. Gemini, OpenAI, Anthropic, and Mistral are selectable in the sidebar.
+   ```powershell
+   python -m venv .venv
+   .venv\Scripts\Activate.ps1
+   pip install -r requirements.txt
+   if (!(Test-Path .env)) { Copy-Item .env.example .env }
+   # Fill the required keys in .env, then run:
+   python ingest_cloud.py
+   ```
 
-## Privacy and safety
+   Ingestion fetches only the five allowlisted Groww pages, embeds them with the same configured OpenAI model used at query time, and stores chunks in the configured Chroma Cloud collection. It also writes inspectable stage artifacts under ignored `data/`.
+6. Visit the Vercel deployment URL and ask a factual question. The sidebar-style selector is on the page; OpenAI is the default.
 
-The app does not save questions or answers. Avoid entering PAN, Aadhaar, account numbers, OTPs, email addresses, or phone numbers; likely identifiers are rejected before retrieval. Provider keys are read from environment variables and sent only to the selected model API. Do not expose this demo publicly without adding appropriate secret management, rate limits, privacy review, and deployment controls.
+The API health check is `/api/health`. If Vercel environment variables change, redeploy so the new values are available to the deployment.
 
-**Disclaimer:** Facts only. This assistant is for general scheme information and does not provide investment, legal, or tax advice, make recommendations, or compare performance. Scheme details can change; verify them on the linked source page. Do not enter PAN, Aadhaar, account numbers, OTPs, email addresses, or phone numbers.
+## Local options
 
-## Known limits
+- Run the Vercel-compatible API locally with `uvicorn app:app --reload`; it serves the API. Open `public/index.html` separately or use `vercel dev` to test the Vercel routing and static UI together.
+- The previous Streamlit prototype remains in `streamlit_app.py`. To run it locally, install `requirements-streamlit.txt`, set its configured local embedding model, and run `streamlit run streamlit_app.py`. Its local ChromaDB index is separate from the Vercel Chroma Cloud collection.
 
-- The corpus is intentionally restricted to the five requested Groww pages. `sources.csv` lists those five plus the HDFC AMC website as an un-fetched reference link used only for the performance-question refusal. The requested 15–25 URL bibliography cannot be truthfully supplied without consulting additional pages; those pages are not fetched or indexed in this prototype.
-- Groww pages can change and may contain stale or incomplete facts. Refreshing ingestion overwrites the local corpus.
-- “How to download statements” is not covered by the five-page corpus, so the assistant declines to give steps.
-- A Groww source URL does not imply the assistant has verified facts with the AMC, SEBI, or AMFI. Apart from the reference-only AMC website link for performance questions, official AMC/SEBI/AMFI sources are not part of this demo corpus.
-- The app requires one configured LLM API key for answer generation. Ingestion uses a local embedding model and may download model weights on first use.
-- Performance and ranking content is excluded from chunking; the assistant refuses performance questions and does not calculate returns.
-- This is a local demonstration, not a production financial-support service.
+## Scope and limits
+
+- Only the five URLs in `config.yaml` are scraped; links found on those pages are not followed.
+- OpenAI `text-embedding-3-small` and cosine distance are used for both ingestion and query retrieval. Switching the model requires a new Chroma collection and a fresh ingestion.
+- Chroma Cloud is required for Vercel because serverless local files are not a durable vector database.
+- The source corpus does not explain statement downloads; the assistant declines to invent steps.
+- This is a demo, not a production financial-support service. Review source freshness, security, cost, rate limits, privacy, and provider terms before public use.
+- Configure Vercel Firewall rate limits before sharing the public URL; otherwise visitors can incur embedding and LLM API costs.
+
+**Disclaimer:** Facts only. This assistant does not provide investment, legal, or tax advice, make recommendations, or compare performance. Do not enter PAN, Aadhaar, account numbers, OTPs, phone numbers, or email addresses.

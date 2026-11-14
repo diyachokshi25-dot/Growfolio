@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f6f7f4">
+    <title>HDFC Mutual Fund FAQ</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: #17211b;
+        background: #f6f7f4;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+      main { width: min(100%, 720px); }
+      .card { background: white; border: 1px solid #e4e9e4; border-radius: 20px; padding: clamp(24px, 5vw, 42px); box-shadow: 0 16px 48px #18251b0a; }
+      .eyebrow { color: #52715c; font-size: .82rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+      h1 { margin: 12px 0; font-size: clamp(1.8rem, 5vw, 2.5rem); letter-spacing: -.04em; }
+      .intro, .disclaimer { color: #56635a; line-height: 1.6; }
+      label { display: block; font-size: .9rem; font-weight: 650; margin: 22px 0 8px; }
+      textarea, select { width: 100%; border: 1px solid #cad4cc; border-radius: 10px; padding: 12px 14px; font: inherit; background: white; }
+      textarea { min-height: 112px; resize: vertical; }
+      textarea:focus, select:focus { outline: 3px solid #bddcc5; border-color: #427a50; }
+      .row { display: flex; gap: 12px; align-items: end; }
+      .provider { flex: 1; }
+      button { min-height: 44px; border: 0; border-radius: 10px; padding: 0 20px; background: #16763b; color: white; font: inherit; font-weight: 700; cursor: pointer; }
+      button:disabled { opacity: .6; cursor: wait; }
+      .disclaimer { margin: 22px 0 0; font-size: .86rem; }
+      #result { margin-top: 20px; border-radius: 12px; padding: 16px; background: #f2f7f2; line-height: 1.55; }
+      #result[hidden] { display: none; }
+      #error { color: #a22626; }
+      .meta { margin-top: 12px; color: #56635a; font-size: .88rem; }
+      a { color: #176f38; }
+      @media (max-width: 520px) { .row { align-items: stretch; flex-direction: column; } button { width: 100%; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="card">
+        <div class="eyebrow">Growfolio · facts only</div>
+        <h1>HDFC Mutual Fund FAQ</h1>
+        <p class="intro">Ask about factual details from the five indexed scheme pages. Answers include a source and the date it was fetched.</p>
+        <form id="question-form">
+          <label for="question">Your question</label>
+          <textarea id="question" maxlength="500" required placeholder="Example: What is the exit load for HDFC Mid Cap Fund?"></textarea>
+          <div class="row">
+            <div class="provider">
+              <label for="provider">Answer model</label>
+              <select id="provider">
+                <option value="openai" selected>OpenAI</option>
+                <option value="gemini">Gemini</option>
+                <option value="anthropic">Anthropic</option>
+                <option value="mistral">Mistral</option>
+              </select>
+            </div>
+            <button id="submit" type="submit">Ask</button>
+          </div>
+        </form>
+        <p class="disclaimer"><strong>Disclaimer:</strong> Facts only; no investment, legal, or tax advice and no performance comparisons. Do not enter PAN, Aadhaar, account numbers, OTPs, phone numbers, or email addresses.</p>
+        <div id="result" role="status" aria-live="polite" hidden>
+          <div id="answer"></div>
+          <div class="meta"><a id="source" target="_blank" rel="noopener noreferrer">Source</a><br><span id="updated"></span></div>
+          <div id="error"></div>
+        </div>
+      </section>
+    </main>
+    <script>
+      const form = document.querySelector("#question-form");
+      const button = document.querySelector("#submit");
+      const result = document.querySelector("#result");
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        result.hidden = false;
+        button.disabled = true;
+        button.textContent = "Searching…";
+        document.querySelector("#answer").textContent = "";
+        document.querySelector("#error").textContent = "";
+        document.querySelector("#source").hidden = true;
+        document.querySelector("#updated").textContent = "";
+        try {
+          const response = await fetch("/api/answer", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              question: document.querySelector("#question").value,
+              provider: document.querySelector("#provider").value
+            })
+          });
+          const payload = await response.json();
+          if (!response.ok) throw new Error(payload.detail || "The request failed.");
+          document.querySelector("#answer").textContent = payload.answer;
+          const source = document.querySelector("#source");
+          source.href = payload.source_url;
+          source.hidden = false;
+          document.querySelector("#updated").textContent =
+            `Last updated from sources: ${payload.last_updated}`;
+        } catch (error) {
+          document.querySelector("#error").textContent = error.message;
+        } finally {
+          button.disabled = false;
+          button.textContent = "Ask";
+        }
+      });
+    </script>
+  </body>
+</html>

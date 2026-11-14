@@ -1,187 +1,111 @@
-# Phase-wise implementation
+# Vercel implementation plan
 
-This plan follows [architecture.md](./architecture.md) and keeps the prototype small: local Streamlit UI, five approved source pages, Sentence Transformers, ChromaDB, and a configurable LLM.
+This plan follows [architecture.md](./architecture.md). The deployed app uses FastAPI on Vercel, a static browser UI, OpenAI embeddings, and Chroma Cloud. Corpus ingestion is a separate local command; Vercel Functions never write to a local vector database.
 
-## Phase 1 — Create the project directories
-
-### Set up
-
-Create the project and data directories:
+## 1. Project structure and configuration
 
 ```text
-app.py
-config.yaml
-.env.example
-.gitignore
-requirements.txt
-data/
-  01_raw/
-  02_chunks/
-  03_embeddings/
-  04_vector_db/
+app.py                    # FastAPI entrypoint; exports app
+public/index.html         # Static FAQ interface
+ingest_cloud.py           # Manual allowlisted ingestion
+config.yaml               # Sources, chunking, retrieval, model and collection settings
+requirements.txt          # Vercel runtime dependencies
+requirements-streamlit.txt# Optional legacy local UI dependencies
+data/                     # Ignored local ingestion artifacts
 tests/
 ```
 
-- Add source URLs, chunk size, embedding model, ChromaDB path/collection, retrieval threshold, and LLM provider/model settings to `config.yaml`.
-- Default embedding model: `sentence-transformers/all-MiniLM-L6-v2`.
-- Default vector database: ChromaDB.
-- Configure Groq as the primary LLM provider, with the requested model read from `GROQ_MODEL`; support Gemini, OpenAI, Anthropic, and Mistral as alternatives.
-- Keep `GROQ_API_KEY` and model selection in local environment settings. Ignore `.env`, `.venv/`, generated `data/`, and caches in `.gitignore`.
+Keep `.env`, `.venv/`, generated `data/`, caches, and API keys out of Git. Vercel secrets are set in Project Settings, not committed to the repository.
 
 ### Check
 
-- The app can read its configuration.
-- No real API key is in source control.
-- Invalid provider or backend configuration produces a clear error.
+- Vercel detects the top-level FastAPI `app` in `app.py`.
+- `/api/health` responds with `{"status":"ok"}`.
+- `public/index.html` is served as the landing page.
 
-## Phase 2 — Scrape the approved pages
+## 2. Scraping documents
 
-### Implement
-
-- Fetch only the five URLs in `config.yaml`; do not follow links or crawl other pages.
-- Check HTTP status, content type, response size, and timeout. Reject redirects to unapproved URLs.
-- Extract visible page text while preserving headings and relevant table text.
-- Record each page’s source ID, title, URL, fetch date, status, and extracted text in `data/01_raw/pages.json`.
-- Report fetch errors per URL. Do not mark a partial scrape as a successful refresh.
+`ingest_cloud.py` requests exactly the five URLs in `config.yaml`. It disables redirects, enforces response size and timeout limits, checks HTML content type, strips non-visible elements, and never fetches discovered links.
 
 ### Check
 
-- Only allowlisted URLs are requested.
-- Internal page links are never fetched.
-- A failed page is reported, not silently saved as empty content.
-- Raw records contain the original URL and fetch date.
+- All five sources succeed or ingestion stops with an explicit error.
+- A redirect, non-HTML result, timeout, HTTP error, or oversized response cannot be marked successful.
 
-## Phase 3 — Load and validate scraped documents
+## 3. Loading and validation
 
-### Implement
-
-- Read only the saved `data/01_raw/pages.json`; this phase performs no network requests.
-- Validate the required fields, source allowlist, fetch status, non-empty text, and fetch date for every document.
-- Normalize valid page records into a consistent in-memory `Document` structure for chunking.
-- Reject duplicate source IDs/URLs and stop the pipeline if a required page is missing or invalid.
-- Save normalized documents to `data/01_raw/loaded_documents.json`.
-- Write a load manifest to `data/01_raw/load_manifest.json` with loaded document IDs, validation status, and content hashes.
+The script writes raw pages to `data/01_raw/pages.json`, validates the exact source IDs and URLs, fetch status, HTML type, text, hashes, uniqueness, and fetch dates, then writes `loaded_documents.json` and `load_manifest.json`.
 
 ### Check
 
-- Loading a valid raw snapshot produces five normalized documents.
-- Missing, failed, malformed, or unapproved documents produce a clear error.
-- This phase never fetches a URL or follows a page link.
+- Exactly five unique approved records are loaded.
+- Missing, malformed, duplicate, or unapproved data stops ingestion.
 
-## Phase 4 — Chunk the documents
+## 4. Chunking
 
-### Implement
-
-- Use section-aware chunks that keep scheme facts and their labels together (for example, expense ratio/value or exit load/condition).
-- Keep chunks for different schemes separate; attach source ID, scheme, section, source URL, and fetch date.
-- Set a configurable maximum chunk size and split at section or paragraph boundaries.
-- Exclude returns, performance, ranking, and return-calculator content from the answerable chunks.
-- Save chunks with stable IDs to `data/02_chunks/chunks.json`.
+The section-aware chunker preserves short fact labels with their values, keeps scheme chunks separate, and excludes performance/ranking sections. It saves stable chunk IDs and metadata to `data/02_chunks/chunks.json`.
 
 ### Check
 
-- Fact labels remain with their values.
-- Chunks never mix scheme sources.
-- Performance and ranking content is excluded.
-- Re-running on unchanged input produces stable chunk IDs.
+- Each chunk has a source ID, URL, section, and fetch date.
+- Chunks remain attributable to one approved page.
 
-## Phase 5 — Create embeddings
+## 5. Embedding
 
-### Implement
-
-- Load the configured Sentence Transformers model once for ingestion.
-- Embed every chunk and save chunk ID, model name, and vector in `data/03_embeddings/embeddings.json`.
-- Validate that each chunk has one finite vector and all vectors have the same dimension.
-- Use the exact same configured model for question embeddings during retrieval.
-- Store the model name/fingerprint in the ingestion manifest; require re-ingestion if it changes.
+Ingestion and query retrieval both call OpenAI `text-embedding-3-small`. The script validates vector count, dimension, numeric values, and finite values, then saves the embedding stage artifact to `data/03_embeddings/embeddings.json`.
 
 ### Check
 
-- Embedding count equals chunk count.
-- Vectors are non-empty, finite, and consistently sized.
-- A model mismatch blocks retrieval instead of mixing incompatible vectors.
+- Vector count equals chunk count.
+- A model change requires re-ingestion before retrieval.
 
-## Phase 6 — Store data in ChromaDB
+## 6. Chroma Cloud storage
 
-### Implement
-
-- Create the ChromaDB collection using the configured path and collection name.
-- Store chunk text, embedding, stable ID, and source metadata.
-- Save a manifest with fetch dates, chunk/vector counts, embedding model, collection, and ingestion status under `data/04_vector_db/`.
-- Validate the new index before making it active; preserve the last successful index if refresh fails.
+Ingestion uses `CHROMA_API_KEY`, `CHROMA_TENANT`, `CHROMA_DATABASE`, and optional `CHROMA_HOST`. It upserts stable chunk IDs into the configured collection, removes stale IDs, checks the stored count, performs a sample query, and writes the local vector manifest.
 
 ### Check
 
-- Stored record count matches chunk/vector counts.
-- A test query returns text and the expected source metadata.
-- The collection persists after app restart.
-- A failed refresh does not replace a valid collection.
+- Chroma Cloud contains the complete current set of chunks.
+- A sample query returns the expected source metadata.
+- Vercel uses the same collection and the same embedding model as ingestion.
 
-## Phase 7 — Retrieval logic and UI
+## 7. Retrieval, API, and UI
 
-### Retrieval and answer flow
+1. `POST /api/answer` validates a question (1–500 characters) and selected provider.
+2. The API blocks likely PII, advice, performance, and unsupported statement-download questions before embeddings or LLM calls.
+3. It generates an OpenAI query embedding, filters by named scheme, and requests configured top-k results from Chroma Cloud.
+4. It validates metadata, source allowlist, fetch date, distance, and the maximum-distance threshold.
+5. It sends excerpts from only the cited source to the selected LLM.
+6. It rejects overlong, URL-bearing, or performance-related generated text.
+7. The API returns answer text, one application-owned source URL, and the source fetch date.
 
-1. Check the user’s question for PII and unsafe intent before embedding or sending it to a model.
-2. Resolve a named scheme to a source filter when possible.
-3. Embed the question with the configured ingestion model.
-4. Query the configured ChromaDB collection using `top_k` and a distance threshold.
-5. If evidence is weak or missing, return an unsupported response without calling the LLM.
-6. For supported questions, send only the safe query and retrieved excerpts to the selected provider.
-7. Validate the response; the app, not the LLM, selects one source URL and its fetch date.
-8. Show the answer (maximum three sentences), one source link, and `Last updated from sources: YYYY-MM-DD`.
-
-Groq is the primary provider; read `GROQ_API_KEY` and `GROQ_MODEL` from local environment settings. Verify the requested model ID `qwen/qwen3.8-27b` before release. Gemini, OpenAI, Anthropic, and Mistral are configurable alternatives. Surface provider errors instead of inventing an answer.
-
-### UI
-
-- Show a welcome message, three example questions, and the disclaimer: **“Facts-only. No investment advice.”**
-- Provide an explicit **Run ingestion** action and show progress/errors for scraping, document loading, chunking, embedding, and indexing.
-- Show artifact counts and source metadata; do not persist question/answer history.
-- Keep any retrieval debug panel limited to corpus excerpts and metadata.
+The static browser UI renders the result and disclaimer. It must not persist query history or expose provider credentials.
 
 ### Check
 
-- A named-scheme question retrieves evidence from that scheme.
-- A valid answer’s citation and date come from its supporting result.
-- Weak retrieval does not call the LLM.
-- The UI displays the required citation and update date for answers and refusals.
+- A named scheme is filtered to its approved page.
+- Weak retrieval does not call an LLM.
+- Each answer includes one source and `Last updated from sources:`.
+- Provider, embedding, and Chroma Cloud errors remain visible.
 
-## Phase 8 — Edge cases and guardrail tests
+## 8. Guardrails and edge-case checks
 
-Test each case and confirm the expected behavior before handoff:
-
-| Input or failure | Expected behavior |
+| Case | Expected behavior |
 |---|---|
-| PAN, Aadhaar, account number, OTP, email, or phone-like input | Reject before embedding/LLM; do not log or persist |
-| “Should I buy/sell?” or a portfolio recommendation request | Polite refusal; no recommendation |
-| Return, performance, or ranking question | No performance claim; link to an approved official factsheet/disclosure |
-| Statement-download question not supported by sources | Say the steps are not in the corpus; do not infer them |
-| Unknown fact or low retrieval confidence | Unsupported response; no LLM-generated guess |
-| Question names one scheme but retrieved evidence is another | Reject or retrieve again with the correct scheme filter |
-| Source timeout, HTTP error, or redirect outside allowlist | Report the source failure; do not mark ingestion complete |
-| Embedding or ChromaDB error | Report the failed phase; preserve the last successful index |
-| Missing API key, invalid model, timeout, or provider error | Show a clear error; do not return a fabricated answer |
-| Model gives too many sentences, unsupported content, or a URL | Reject/replace with a safe fallback; citation remains application-owned |
-| Source fetch date is old or missing | Show the recorded date or decline; never substitute today’s date |
+| PAN, Aadhaar, account, OTP, email, or phone-like input | Refuse before external model calls |
+| Buy/sell or recommendation request | Polite refusal; no recommendation |
+| Return, performance, or ranking request | Refuse performance claims |
+| Statement-download question | Say the indexed pages do not contain the steps |
+| Unknown fact or low retrieval confidence | Unsupported response; no LLM guess |
+| Source outside allowlist or invalid date | Reject retrieved result |
+| Missing API key or Chroma Cloud configuration | Clear configuration error |
+| Provider/embedding/Chroma Cloud outage | Visible failure, not a fabricated answer |
+| Too many sentences, generated URL, or performance claim | Replace with safe fallback |
 
-### Guardrail acceptance checks
+### Deployment checklist
 
-- No unsafe query reaches the embedding model or external LLM.
-- Questions and answers are not written to persistent storage or logs.
-- Every user-facing answer/refusal is at most three sentences, has one relevant source link, and includes the required update line.
-- Provider, ingestion, and retrieval failures are visible and never produce success-shaped fallbacks.
-
-## Handoff checklist
-
-- Run the focused tests for each phase and the end-to-end guardrail cases.
-- Confirm only approved pages were fetched and all stage artifacts are inspectable.
-- Confirm retrieval uses the same embedding model and vector database configuration as ingestion.
-- Provide setup instructions, a source list, 5–10 sample Q&A items, and the UI disclaimer.
-- Provide a hosted link or a demo video of no more than three minutes; otherwise document local run steps.
-
-## Open decisions
-
-- The requirement asks for 15–25 source URLs but currently limits scraping to five pages. Decide whether to list additional non-indexed official references or approve more pages for ingestion.
-- Confirm whether the specified Groww pages meet the institutional-source requirement for AMC/SEBI/AMFI citations.
-- Approve official educational and factsheet links for refusals.
-- Verify availability of Groq model `qwen/qwen3.8-27b`.
+- Add `OPENAI_API_KEY`, `CHROMA_API_KEY`, `CHROMA_TENANT`, and `CHROMA_DATABASE` as Vercel Secret variables. Add `CHROMA_HOST` only for a non-default region.
+- Select Production and any desired Preview environments.
+- Deploy, run `python ingest_cloud.py` locally with the same keys and collection, and verify the ingestion manifest.
+- Configure Vercel Firewall rate limits before sharing the public URL; requests can incur API costs.
+- Never commit `.env` or paste secrets into chat or source code.

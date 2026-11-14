@@ -36,6 +36,11 @@ retrieval:
   top_k: 4
   max_distance: 0.9
 
+deployment:
+  default_provider: openai
+  embedding_model: text-embedding-3-small
+  collection_name: hdfc_mutual_fund_faq
+
 llm:
   default_provider: gemini
   providers:
