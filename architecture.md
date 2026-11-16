@@ -52,7 +52,17 @@ flowchart LR
 
 ### 4.1 Browser UI
 
-`public/index.html` contains the question form, model selector, facts-only disclaimer, and response display. It calls `POST /api/answer`, renders answer text as text (not HTML), and displays the application-owned source and fetch date. It does not persist question history.
+`public/index.html` is the static, responsive FAQ experience served by Vercel. Its visual direction adapts the `growfolio_dolce_vita_edition` Stitch export supplied in `stitch_growfolio.zip`: white stationery-like surfaces, pale-blue cabana stripes, butter-yellow accents, Bodoni Moda display type, readable Epilogue controls, and restrained botanical/postal motifs. The generated mock answer and mock metrics are not used; corpus counts and answers reflect the configured source set and live API response.
+
+The page provides:
+
+- A prominent question form, answer-model selector, and example-question chips that only fill the question field.
+- Corpus summaries for five approved pages, four scheme pages, and five pipeline steps.
+- A directory of the five allowlisted public source pages and a visual load/chunk/embed/store/retrieve flow.
+- A response card that renders the API answer as text and displays exactly the API-provided source URL and fetch date.
+- Facts-only and privacy notices, responsive layouts, visible keyboard focus, and reduced-motion support.
+
+The browser sends only the question and selected answer provider to `POST /api/answer`; it does not persist question history or receive provider credentials. Network and API errors are shown in the response card rather than replaced with a sample answer.
 
 ### 4.2 FastAPI application
 

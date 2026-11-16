@@ -88,6 +88,20 @@ The static browser UI renders the result and disclaimer. It must not persist que
 - Each answer includes one source and `Last updated from sources:`.
 - Provider, embedding, and Chroma Cloud errors remain visible.
 
+### UI design and interaction
+
+`public/index.html` adapts the `growfolio_dolce_vita_edition` Stitch export supplied in `stitch_growfolio.zip`. Preserve its Italian garden / vintage stationery direction with a white canvas, pale-blue cabana stripes, butter-yellow accents, Bodoni Moda display headings, readable body/control type, and subtle botanical and postal details. Keep decorative art secondary to facts, controls, citations, and large corpus figures.
+
+The page summarizes five approved source pages, four HDFC scheme pages, and five pipeline steps (load, chunk, embed, store, retrieve and cite). It lists the allowlisted sources, provides example-question chips, and sends only the question and selected answer provider to `POST /api/answer`. It renders answer text safely, displays the returned source link and `Last updated from sources:` date, and shows request errors visibly. Do not copy the generated Stitch mock answer, mock source metadata, or unverified financial metrics into the live UI.
+
+### Check
+
+- The question form works with mouse and keyboard on mobile and desktop.
+- Example chips populate the question field but do not submit a request.
+- The result card displays only the API response, one source link, and the fetch-date label.
+- Failed or malformed responses show an error; they never fall back to a sample financial answer.
+- Reduced-motion preferences disable decorative animation, and focus states remain visible.
+
 ## 8. Guardrails and edge-case checks
 
 | Case | Expected behavior |

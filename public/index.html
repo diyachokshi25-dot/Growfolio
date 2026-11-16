@@ -3,104 +3,1074 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#f6f7f4">
-    <title>HDFC Mutual Fund FAQ</title>
+    <meta name="theme-color" content="#ffffff">
+    <meta name="description" content="A facts-only FAQ assistant for HDFC mutual fund scheme details, with source links.">
+    <title>Growfolio — HDFC Mutual Fund FAQ</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,500;0,6..96,600;1,6..96,500;1,6..96,600&family=EB+Garamond:wght@400;500;600&family=Epilogue:wght@400;500;600;700&family=Pinyon+Script&display=swap" rel="stylesheet">
     <style>
       :root {
         color-scheme: light;
-        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        color: #17211b;
-        background: #f6f7f4;
+        --ink: #1d2b3a;
+        --muted: #627181;
+        --blue: #315d91;
+        --blue-soft: #dceafa;
+        --blue-pale: #f0f6fc;
+        --yellow: #f5cc61;
+        --yellow-pale: #fff4d5;
+        --leaf: #486b50;
+        --paper: #fffefa;
+        --line: #dce3e8;
+        --error: #9c3434;
+        --shadow: 0 16px 38px rgba(49, 93, 145, .09);
+        font-family: "Epilogue", "Segoe UI", sans-serif;
+        color: var(--ink);
+        background: #fff;
       }
+
       * { box-sizing: border-box; }
-      body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px; }
-      main { width: min(100%, 720px); }
-      .card { background: white; border: 1px solid #e4e9e4; border-radius: 20px; padding: clamp(24px, 5vw, 42px); box-shadow: 0 16px 48px #18251b0a; }
-      .eyebrow { color: #52715c; font-size: .82rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
-      h1 { margin: 12px 0; font-size: clamp(1.8rem, 5vw, 2.5rem); letter-spacing: -.04em; }
-      .intro, .disclaimer { color: #56635a; line-height: 1.6; }
-      label { display: block; font-size: .9rem; font-weight: 650; margin: 22px 0 8px; }
-      textarea, select { width: 100%; border: 1px solid #cad4cc; border-radius: 10px; padding: 12px 14px; font: inherit; background: white; }
-      textarea { min-height: 112px; resize: vertical; }
-      textarea:focus, select:focus { outline: 3px solid #bddcc5; border-color: #427a50; }
-      .row { display: flex; gap: 12px; align-items: end; }
-      .provider { flex: 1; }
-      button { min-height: 44px; border: 0; border-radius: 10px; padding: 0 20px; background: #16763b; color: white; font: inherit; font-weight: 700; cursor: pointer; }
-      button:disabled { opacity: .6; cursor: wait; }
-      .disclaimer { margin: 22px 0 0; font-size: .86rem; }
-      #result { margin-top: 20px; border-radius: 12px; padding: 16px; background: #f2f7f2; line-height: 1.55; }
-      #result[hidden] { display: none; }
-      #error { color: #a22626; }
-      .meta { margin-top: 12px; color: #56635a; font-size: .88rem; }
-      a { color: #176f38; }
-      @media (max-width: 520px) { .row { align-items: stretch; flex-direction: column; } button { width: 100%; } }
+
+      html { scroll-behavior: smooth; }
+
+      body {
+        margin: 0;
+        min-width: 320px;
+        background: #fff;
+        color: var(--ink);
+        font-size: 15px;
+        line-height: 1.6;
+      }
+
+      a { color: var(--blue); }
+      button, textarea, select { font: inherit; }
+      button, a, select { -webkit-tap-highlight-color: transparent; }
+
+      :focus-visible {
+        outline: 3px solid #e6b638;
+        outline-offset: 3px;
+      }
+
+      .page-shell {
+        position: relative;
+        isolation: isolate;
+        min-height: 100vh;
+        overflow: hidden;
+      }
+
+      .page-shell::before,
+      .page-shell::after {
+        position: absolute;
+        z-index: -1;
+        top: 0;
+        bottom: 0;
+        width: max(16px, calc((100vw - 1200px) / 2));
+        content: "";
+        background: repeating-linear-gradient(
+          90deg,
+          #fff 0 28px,
+          #edf5fd 28px 56px
+        );
+        opacity: .7;
+      }
+
+      .page-shell::before { left: 0; }
+      .page-shell::after { right: 0; }
+
+      .container {
+        width: min(100% - 48px, 1120px);
+        margin-inline: auto;
+      }
+
+      .site-header {
+        display: flex;
+        min-height: 88px;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+        border-bottom: 1px solid rgba(49, 93, 145, .14);
+      }
+
+      .brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 11px;
+        color: inherit;
+        text-decoration: none;
+      }
+
+      .brand-mark {
+        display: grid;
+        width: 42px;
+        height: 42px;
+        place-items: center;
+        border: 1px solid #e6c76b;
+        border-radius: 50%;
+        background: var(--yellow-pale);
+        color: var(--leaf);
+      }
+
+      .brand-name {
+        display: block;
+        font: 600 25px/1 "Bodoni Moda", Georgia, serif;
+        letter-spacing: -.03em;
+      }
+
+      .brand-caption {
+        display: block;
+        margin-top: 5px;
+        color: var(--muted);
+        font-size: 9px;
+        font-weight: 700;
+        letter-spacing: .15em;
+        text-transform: uppercase;
+      }
+
+      .site-nav {
+        display: flex;
+        align-items: center;
+        gap: clamp(16px, 3vw, 34px);
+      }
+
+      .site-nav a {
+        color: #48596a;
+        font-size: 12px;
+        font-weight: 600;
+        text-decoration: none;
+      }
+
+      .site-nav a:hover { color: var(--blue); }
+
+      .facts-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 8px 12px;
+        border: 1px solid #cbd9e8;
+        border-radius: 999px;
+        background: #fff;
+        color: var(--leaf);
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+        white-space: nowrap;
+      }
+
+      .facts-badge::before {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #71a06e;
+        content: "";
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: minmax(0, 1.15fr) minmax(250px, .85fr);
+        align-items: center;
+        gap: clamp(30px, 6vw, 78px);
+        padding-block: clamp(48px, 8vw, 90px) 48px;
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 9px;
+        color: var(--blue);
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: .16em;
+        text-transform: uppercase;
+      }
+
+      .eyebrow::before {
+        width: 25px;
+        height: 1px;
+        background: var(--yellow);
+        content: "";
+      }
+
+      h1, h2, h3, p { margin-top: 0; }
+
+      h1 {
+        max-width: 650px;
+        margin: 17px 0 16px;
+        font: 500 clamp(42px, 6.2vw, 76px)/1.02 "Bodoni Moda", Georgia, serif;
+        letter-spacing: -.04em;
+      }
+
+      h1 em {
+        color: var(--blue);
+        font-weight: 500;
+      }
+
+      .hero-copy {
+        max-width: 560px;
+        margin-bottom: 25px;
+        color: #566575;
+        font: 400 20px/1.55 "EB Garamond", Georgia, serif;
+      }
+
+      .script-note {
+        color: #a57719;
+        font: 26px/1 "Pinyon Script", cursive;
+      }
+
+      .hero-art {
+        position: relative;
+        display: grid;
+        min-height: 290px;
+        place-items: center;
+      }
+
+      .art-card {
+        position: relative;
+        display: grid;
+        width: min(100%, 340px);
+        min-height: 255px;
+        place-items: center;
+        border: 1px solid #d6e0e9;
+        border-radius: 48% 48% 22px 22px;
+        background:
+          linear-gradient(180deg, rgba(220, 234, 250, .55), rgba(255,255,255,.82)),
+          repeating-linear-gradient(90deg, transparent 0 22px, rgba(220,234,250,.7) 22px 44px);
+        box-shadow: var(--shadow);
+      }
+
+      .art-card::before {
+        position: absolute;
+        inset: 12px;
+        border: 1px dashed rgba(49, 93, 145, .42);
+        border-radius: 48% 48% 15px 15px;
+        content: "";
+        pointer-events: none;
+      }
+
+      .art-seal {
+        position: absolute;
+        z-index: 1;
+        top: 22px;
+        right: 22px;
+        display: grid;
+        width: 55px;
+        height: 55px;
+        place-items: center;
+        border: 2px solid rgba(255,255,255,.8);
+        border-radius: 50%;
+        background: var(--yellow);
+        box-shadow: 0 5px 16px rgba(147, 106, 20, .2);
+        color: #755815;
+        font: 22px "Bodoni Moda", Georgia, serif;
+      }
+
+      .art-illustration {
+        width: min(84%, 245px);
+        overflow: visible;
+        animation: garden-sway 7s ease-in-out infinite;
+      }
+
+      .art-caption {
+        position: absolute;
+        bottom: 19px;
+        left: 50%;
+        color: var(--blue);
+        font-size: 9px;
+        font-weight: 700;
+        letter-spacing: .14em;
+        text-transform: uppercase;
+        transform: translateX(-50%);
+        white-space: nowrap;
+      }
+
+      .art-bird {
+        position: absolute;
+        top: 42px;
+        left: 32px;
+        color: var(--blue);
+        font-size: 24px;
+        animation: bird-drift 8s ease-in-out infinite;
+      }
+
+      .art-fruit {
+        position: absolute;
+        right: -14px;
+        bottom: 30px;
+        font-size: 36px;
+        filter: drop-shadow(0 5px 4px rgba(40, 50, 40, .1));
+        transform: rotate(-12deg);
+      }
+
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 14px;
+        margin-bottom: 52px;
+      }
+
+      .stat-card {
+        display: flex;
+        min-height: 112px;
+        align-items: center;
+        gap: 16px;
+        padding: 18px 22px;
+        border: 1px solid #dae4ed;
+        border-radius: 16px;
+        background: rgba(255,255,255,.95);
+        box-shadow: 0 8px 22px rgba(49, 93, 145, .055);
+      }
+
+      .stat-number {
+        color: var(--blue);
+        font: 600 42px/.95 "Bodoni Moda", Georgia, serif;
+        letter-spacing: -.04em;
+      }
+
+      .stat-label {
+        display: block;
+        color: var(--ink);
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .stat-detail {
+        display: block;
+        margin-top: 4px;
+        color: var(--muted);
+        font: 15px/1.25 "EB Garamond", Georgia, serif;
+      }
+
+      .section-heading {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 24px;
+        margin-bottom: 18px;
+      }
+
+      .section-heading h2 {
+        margin: 7px 0 0;
+        font: 500 clamp(28px, 4vw, 42px)/1.1 "Bodoni Moda", Georgia, serif;
+        letter-spacing: -.025em;
+      }
+
+      .section-heading p {
+        max-width: 430px;
+        margin: 0;
+        color: var(--muted);
+        font: 17px/1.4 "EB Garamond", Georgia, serif;
+      }
+
+      .assistant-section { padding-bottom: 64px; }
+
+      .assistant-card {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 260px;
+        gap: 0;
+        overflow: hidden;
+        border: 1px solid #d6e1eb;
+        border-radius: 22px;
+        background: var(--paper);
+        box-shadow: var(--shadow);
+      }
+
+      .assistant-main { padding: clamp(22px, 4vw, 38px); }
+
+      .card-kicker {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--leaf);
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: .12em;
+        text-transform: uppercase;
+      }
+
+      .card-kicker .stamp {
+        display: grid;
+        width: 27px;
+        height: 27px;
+        place-items: center;
+        border: 1px dashed #b78a32;
+        border-radius: 7px;
+        background: var(--yellow-pale);
+        color: #8c6617;
+        font-size: 14px;
+      }
+
+      .assistant-title {
+        margin: 11px 0 4px;
+        font: 500 31px/1.15 "Bodoni Moda", Georgia, serif;
+      }
+
+      .assistant-subtitle {
+        margin-bottom: 22px;
+        color: var(--muted);
+        font: 17px/1.4 "EB Garamond", Georgia, serif;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 7px;
+        color: #33475b;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: .1em;
+        text-transform: uppercase;
+      }
+
+      textarea, select {
+        width: 100%;
+        border: 1px solid #c9d7e4;
+        border-radius: 10px;
+        background: #fff;
+        color: var(--ink);
+      }
+
+      textarea {
+        min-height: 116px;
+        padding: 14px 15px;
+        resize: vertical;
+        font: 17px/1.5 "EB Garamond", Georgia, serif;
+      }
+
+      textarea::placeholder { color: #8190a0; }
+
+      select {
+        min-height: 46px;
+        padding: 0 38px 0 12px;
+        font-size: 13px;
+      }
+
+      textarea:focus, select:focus {
+        border-color: var(--blue);
+        outline: 3px solid rgba(49, 93, 145, .14);
+      }
+
+      .quick-questions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 14px 0 22px;
+      }
+
+      .quick-question {
+        min-height: 32px;
+        padding: 6px 11px;
+        border: 1px solid #d4dfeb;
+        border-radius: 999px;
+        background: #fff;
+        color: #4a627c;
+        cursor: pointer;
+        font-size: 10px;
+        transition: background-color .18s ease, border-color .18s ease, transform .18s ease;
+      }
+
+      .quick-question:hover {
+        transform: translateY(-1px);
+        border-color: #9eb9d5;
+        background: var(--blue-pale);
+      }
+
+      .form-row {
+        display: grid;
+        grid-template-columns: minmax(170px, .7fr) 1fr;
+        align-items: end;
+        gap: 12px;
+      }
+
+      .field-group { min-width: 0; }
+
+      .ask-button {
+        display: inline-flex;
+        min-height: 48px;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 0 22px;
+        border: 1px solid #e2b83f;
+        border-radius: 10px;
+        background: var(--yellow);
+        box-shadow: 0 5px 12px rgba(171, 126, 28, .12);
+        color: #34280d;
+        cursor: pointer;
+        font: 600 17px "EB Garamond", Georgia, serif;
+        transition: transform .18s ease, box-shadow .18s ease, background-color .18s ease;
+      }
+
+      .ask-button:hover:not(:disabled) {
+        transform: translateY(-2px);
+        background: #f8d575;
+        box-shadow: 0 8px 16px rgba(171, 126, 28, .18);
+      }
+
+      .ask-button:disabled { cursor: wait; opacity: .72; }
+
+      .ask-button .arrow { font: 16px "Epilogue", sans-serif; }
+
+      .assistant-aside {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        gap: 22px;
+        padding: 28px 24px;
+        border-left: 1px solid #dce5ed;
+        background:
+          repeating-linear-gradient(0deg, #fff 0 26px, #f1f6fc 26px 52px);
+      }
+
+      .aside-stamp {
+        align-self: flex-end;
+        display: grid;
+        width: 76px;
+        height: 76px;
+        place-items: center;
+        border: 1px dashed #a77c20;
+        border-radius: 50%;
+        background: #fff7df;
+        color: #8b681b;
+        font: 13px/1.1 "Bodoni Moda", Georgia, serif;
+        text-align: center;
+        transform: rotate(9deg);
+      }
+
+      .aside-copy {
+        margin: auto 0;
+        color: #3d5267;
+        font: 500 25px/1.16 "Bodoni Moda", Georgia, serif;
+      }
+
+      .aside-copy em {
+        display: block;
+        margin-top: 10px;
+        color: #a47719;
+        font: 24px/1 "Pinyon Script", cursive;
+      }
+
+      .privacy-note {
+        margin: 0;
+        color: #657587;
+        font-size: 10px;
+        line-height: 1.55;
+      }
+
+      .response {
+        margin-top: 22px;
+        padding: 20px;
+        border: 1px solid #d2e0ed;
+        border-radius: 14px;
+        background: #f4f8fc;
+        animation: card-arrive .28s ease-out both;
+      }
+
+      .response[hidden] { display: none; }
+
+      .response-label {
+        margin-bottom: 8px;
+        color: var(--leaf);
+        font-size: 9px;
+        font-weight: 700;
+        letter-spacing: .13em;
+        text-transform: uppercase;
+      }
+
+      .response-answer {
+        margin: 0;
+        color: #243648;
+        font: 18px/1.55 "EB Garamond", Georgia, serif;
+        white-space: pre-wrap;
+      }
+
+      .response-meta {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px 18px;
+        margin-top: 15px;
+        padding-top: 12px;
+        border-top: 1px solid #dce5ec;
+        color: #657587;
+        font-size: 10px;
+      }
+
+      .response-meta a {
+        font-weight: 700;
+        text-underline-offset: 3px;
+      }
+
+      .response-error {
+        margin: 12px 0 0;
+        color: var(--error);
+        font-size: 12px;
+      }
+
+      .response-error:empty { display: none; }
+
+      .sources-section, .pipeline-section { padding-bottom: 64px; }
+
+      .source-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .source-card {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        min-height: 70px;
+        padding: 14px 16px;
+        border: 1px solid #dce4ec;
+        border-radius: 12px;
+        background: #fff;
+        color: inherit;
+        text-decoration: none;
+        transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+      }
+
+      .source-card:hover {
+        transform: translateY(-2px);
+        border-color: #a8bfd8;
+        box-shadow: 0 8px 18px rgba(49, 93, 145, .08);
+      }
+
+      .source-title {
+        display: block;
+        color: #2b3d50;
+        font-size: 11px;
+        font-weight: 700;
+      }
+
+      .source-type {
+        display: block;
+        margin-top: 4px;
+        color: var(--muted);
+        font: 14px/1.2 "EB Garamond", Georgia, serif;
+      }
+
+      .source-arrow {
+        color: var(--blue);
+        font-size: 18px;
+      }
+
+      .pipeline {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 12px;
+        counter-reset: stages;
+      }
+
+      .pipeline-step {
+        position: relative;
+        min-height: 154px;
+        padding: 18px 15px;
+        border: 1px solid #d9e3ed;
+        border-radius: 14px;
+        background: #fff;
+        counter-increment: stages;
+      }
+
+      .pipeline-step::before {
+        display: grid;
+        width: 31px;
+        height: 31px;
+        margin-bottom: 18px;
+        place-items: center;
+        border-radius: 50%;
+        background: var(--blue);
+        color: #fff;
+        content: counter(stages, decimal-leading-zero);
+        font: 600 13px "Bodoni Moda", Georgia, serif;
+      }
+
+      .pipeline-step:nth-child(even)::before { background: #bd9130; }
+
+      .pipeline-step h3 {
+        margin-bottom: 5px;
+        font: 500 19px/1.1 "Bodoni Moda", Georgia, serif;
+      }
+
+      .pipeline-step p {
+        margin: 0;
+        color: var(--muted);
+        font: 14px/1.35 "EB Garamond", Georgia, serif;
+      }
+
+      .disclaimer {
+        display: grid;
+        grid-template-columns: 35px minmax(0, 1fr);
+        gap: 12px;
+        margin: 0 0 38px;
+        padding: 16px 18px;
+        border: 1px solid #eadcae;
+        border-radius: 13px;
+        background: #fff9e8;
+      }
+
+      .disclaimer-icon {
+        display: grid;
+        width: 32px;
+        height: 32px;
+        place-items: center;
+        border-radius: 50%;
+        background: #f6e8bc;
+        color: #765d1f;
+      }
+
+      .disclaimer strong {
+        display: block;
+        margin-bottom: 3px;
+        color: #4a3c18;
+        font-size: 10px;
+        letter-spacing: .1em;
+        text-transform: uppercase;
+      }
+
+      .disclaimer p {
+        margin: 0;
+        color: #6b5b32;
+        font: 15px/1.45 "EB Garamond", Georgia, serif;
+      }
+
+      .site-footer {
+        padding: 22px 0 34px;
+        border-top: 1px solid rgba(49, 93, 145, .14);
+        color: #738090;
+        font-size: 10px;
+        text-align: center;
+      }
+
+      @keyframes garden-sway {
+        0%, 100% { transform: rotate(-1deg); }
+        50% { transform: rotate(1deg); }
+      }
+
+      @keyframes bird-drift {
+        0%, 100% { transform: translate(0, 0); }
+        50% { transform: translate(7px, -5px); }
+      }
+
+      @keyframes card-arrive {
+        from { opacity: 0; transform: translateY(7px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+
+      @media (max-width: 760px) {
+        .container { width: min(100% - 32px, 560px); }
+        .page-shell::before, .page-shell::after { width: 9px; opacity: .45; }
+        .site-header { min-height: 74px; }
+        .site-nav { display: none; }
+        .facts-badge { padding: 7px 9px; font-size: 8px; }
+        .hero {
+          grid-template-columns: 1fr;
+          gap: 8px;
+          padding-block: 48px 27px;
+        }
+        h1 { max-width: 560px; font-size: clamp(43px, 12vw, 62px); }
+        .hero-copy { max-width: 520px; font-size: 18px; }
+        .hero-art { min-height: 230px; }
+        .art-card { width: min(76%, 310px); min-height: 215px; }
+        .art-illustration { width: min(78%, 205px); }
+        .stats { gap: 8px; margin-bottom: 42px; }
+        .stat-card {
+          min-height: 98px;
+          flex-direction: column;
+          align-items: flex-start;
+          justify-content: center;
+          gap: 7px;
+          padding: 12px;
+        }
+        .stat-number { font-size: 34px; }
+        .stat-label { font-size: 10px; }
+        .stat-detail { font-size: 13px; }
+        .section-heading { align-items: flex-start; flex-direction: column; gap: 8px; }
+        .assistant-card { grid-template-columns: 1fr; }
+        .assistant-aside {
+          min-height: 130px;
+          flex-direction: row;
+          align-items: center;
+          border-top: 1px solid #dce5ed;
+          border-left: 0;
+        }
+        .aside-copy { margin: 0; font-size: 21px; }
+        .aside-stamp { flex: 0 0 60px; width: 60px; height: 60px; font-size: 11px; }
+        .form-row { grid-template-columns: 1fr; }
+        .ask-button { width: 100%; }
+        .source-grid { grid-template-columns: 1fr; }
+        .pipeline { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .pipeline-step:last-child { grid-column: 1 / -1; min-height: 126px; }
+        .sources-section, .pipeline-section { padding-bottom: 48px; }
+      }
+
+      @media (max-width: 390px) {
+        .container { width: calc(100% - 26px); }
+        .brand-name { font-size: 22px; }
+        .brand-mark { width: 37px; height: 37px; }
+        .stats { grid-template-columns: 1fr; }
+        .stat-card { min-height: 76px; flex-direction: row; align-items: center; }
+        .stat-number { min-width: 48px; }
+        .pipeline { grid-template-columns: 1fr; }
+        .pipeline-step, .pipeline-step:last-child { min-height: 0; grid-column: auto; }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after {
+          scroll-behavior: auto !important;
+          animation-duration: .01ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: .01ms !important;
+        }
+      }
     </style>
   </head>
   <body>
-    <main>
-      <section class="card">
-        <div class="eyebrow">Growfolio · facts only</div>
-        <h1>HDFC Mutual Fund FAQ</h1>
-        <p class="intro">Ask about factual details from the five indexed scheme pages. Answers include a source and the date it was fetched.</p>
-        <form id="question-form">
-          <label for="question">Your question</label>
-          <textarea id="question" maxlength="500" required placeholder="Example: What is the exit load for HDFC Mid Cap Fund?"></textarea>
-          <div class="row">
-            <div class="provider">
-              <label for="provider">Answer model</label>
-              <select id="provider">
-                <option value="openai" selected>OpenAI</option>
-                <option value="gemini">Gemini</option>
-                <option value="anthropic">Anthropic</option>
-                <option value="mistral">Mistral</option>
-              </select>
-            </div>
-            <button id="submit" type="submit">Ask</button>
+    <div class="page-shell">
+      <header class="site-header container">
+        <a class="brand" href="#" aria-label="Growfolio home">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 32 32" width="25" height="25" fill="none">
+              <path d="M15.5 10.1c2.5-4.3 6.4-5.8 9.6-5.5-1.1 3.6-3.8 6.2-8.6 6.9" stroke="#486b50" stroke-width="1.7" stroke-linecap="round"/>
+              <path d="M15.7 11.1c-4.5-4-9.2-3.4-11.4-1.7 1.7 3.3 5.3 5.3 10.5 3.8" stroke="#486b50" stroke-width="1.7" stroke-linecap="round"/>
+              <path d="M10 14c-3.6 4.9-.3 12.5 5.8 12.5 6.1 0 9.3-7.6 5.8-12.5-3.2-4.4-8.4-4.4-11.6 0Z" fill="#f5cc61" stroke="#c89a2d" stroke-width="1.2"/>
+              <path d="M14 15.1c-1.6 2.2-1.9 5.1-.6 7.7" stroke="#fff1bc" stroke-width="1.6" stroke-linecap="round"/>
+            </svg>
+          </span>
+          <span>
+            <span class="brand-name">Growfolio</span>
+            <span class="brand-caption">HDFC scheme archive</span>
+          </span>
+        </a>
+        <nav class="site-nav" aria-label="Main navigation">
+          <a href="#assistant">Ask a question</a>
+          <a href="#schemes">Sources</a>
+          <a href="#pipeline">How it works</a>
+        </nav>
+        <span class="facts-badge">Facts only · No advice</span>
+      </header>
+
+      <main>
+        <section class="hero container" aria-labelledby="page-title">
+          <div>
+            <span class="eyebrow">A little Italian garden of facts</span>
+            <h1 id="page-title">A little clarity for your <em>fund questions</em></h1>
+            <p class="hero-copy">Find concise answers to factual questions about HDFC mutual fund schemes, with a link back to the source page.</p>
+            <span class="script-note">Benvenuti, ask away</span>
           </div>
-        </form>
-        <p class="disclaimer"><strong>Disclaimer:</strong> Facts only; no investment, legal, or tax advice and no performance comparisons. Do not enter PAN, Aadhaar, account numbers, OTPs, phone numbers, or email addresses.</p>
-        <div id="result" role="status" aria-live="polite" hidden>
-          <div id="answer"></div>
-          <div class="meta"><a id="source" target="_blank" rel="noopener noreferrer">Source</a><br><span id="updated"></span></div>
-          <div id="error"></div>
-        </div>
-      </section>
-    </main>
+          <div class="hero-art" aria-hidden="true">
+            <span class="art-bird">⌁</span>
+            <div class="art-card">
+              <span class="art-seal">D<br>✦</span>
+              <svg class="art-illustration" viewBox="0 0 260 205" fill="none">
+                <path d="M133 174c-4-45 3-81 29-119M133 151c-28-15-44-35-55-64M141 140c27-8 47-24 64-48M126 127c-12-28-15-49-9-76" stroke="#557959" stroke-width="3" stroke-linecap="round"/>
+                <path d="M161 72c-19 0-30-10-33-22 17-5 31 1 36 16M171 111c16-16 31-16 42-9-7 15-21 22-38 17M91 96c14-8 26-5 34 4-9 12-22 14-35 5M112 70c-4-15 1-27 12-34 9 12 8 26-1 38" fill="#a5c69c" stroke="#557959" stroke-width="2" stroke-linejoin="round"/>
+                <path d="M74 95c-7-8-19-7-25 1-7 10 0 24 12 24 12 0 20-14 13-25ZM204 97c-6-8-18-8-24 0-7 10 0 24 12 24 12 0 20-14 12-24Z" fill="#f5cc61" stroke="#cf9d2d" stroke-width="2"/>
+                <path d="M63 101c-3 5-3 9 0 13M194 103c-3 5-3 9 0 13" stroke="#fff2c4" stroke-width="2" stroke-linecap="round"/>
+                <path d="M102 164c20-12 42-13 65 0l11 22H89l13-22Z" fill="#dceafa" stroke="#315d91" stroke-width="2"/>
+                <path d="M105 164c9-14 19-20 29-20s20 6 29 20" stroke="#315d91" stroke-width="2"/>
+                <path d="M123 186v-13h22v13" stroke="#315d91" stroke-width="2"/>
+              </svg>
+              <span class="art-caption">Citrus · sunshine · clear facts</span>
+            </div>
+            <span class="art-fruit">🍊</span>
+          </div>
+        </section>
+
+        <section class="stats container" aria-label="Corpus overview">
+          <article class="stat-card">
+            <span class="stat-number">05</span>
+            <span><span class="stat-label">Approved source pages</span><span class="stat-detail">A fixed, no-crawl collection</span></span>
+          </article>
+          <article class="stat-card">
+            <span class="stat-number">04</span>
+            <span><span class="stat-label">HDFC schemes</span><span class="stat-detail">Large, Flexi, ELSS &amp; Mid Cap</span></span>
+          </article>
+          <article class="stat-card">
+            <span class="stat-number">05</span>
+            <span><span class="stat-label">RAG pipeline steps</span><span class="stat-detail">Load through retrieval &amp; citation</span></span>
+          </article>
+        </section>
+
+        <section class="assistant-section container" id="assistant" aria-labelledby="assistant-heading">
+          <div class="section-heading">
+            <div>
+              <span class="eyebrow">The question desk</span>
+              <h2 id="assistant-heading">Ask the HDFC fund archive</h2>
+            </div>
+            <p>Ask one factual question at a time. Every response includes one source link and its source date.</p>
+          </div>
+          <div class="assistant-card">
+            <div class="assistant-main">
+              <span class="card-kicker"><span class="stamp" aria-hidden="true">✦</span> Verified-source assistant</span>
+              <h3 class="assistant-title">What would you like to know?</h3>
+              <p class="assistant-subtitle">Expense ratio, exit load, minimum SIP, lock-in, riskometer, benchmark, and more from the indexed pages.</p>
+              <form id="question-form">
+                <label for="question">Your question</label>
+                <textarea id="question" name="question" maxlength="500" required placeholder="Example: What is the exit load for HDFC Mid Cap Fund?"></textarea>
+                <div class="quick-questions" aria-label="Example questions">
+                  <button class="quick-question" type="button" data-question="What is the expense ratio for HDFC Large Cap Fund?">Expense ratio</button>
+                  <button class="quick-question" type="button" data-question="What is the exit load for HDFC Mid Cap Fund?">Exit load</button>
+                  <button class="quick-question" type="button" data-question="What is the minimum SIP for HDFC Flexi Cap Fund?">Minimum SIP</button>
+                  <button class="quick-question" type="button" data-question="What is the lock-in period for HDFC ELSS Tax Saver Fund?">ELSS lock-in</button>
+                  <button class="quick-question" type="button" data-question="What is the riskometer for HDFC Mid Cap Fund?">Riskometer</button>
+                </div>
+                <div class="form-row">
+                  <div class="field-group">
+                    <label for="provider">Answer model</label>
+                    <select id="provider" name="provider">
+                      <option value="openai" selected>OpenAI</option>
+                      <option value="gemini">Gemini</option>
+                      <option value="anthropic">Anthropic</option>
+                      <option value="mistral">Mistral</option>
+                    </select>
+                  </div>
+                  <button class="ask-button" id="submit" type="submit">
+                    <span>Ask the archive</span><span class="arrow" aria-hidden="true">→</span>
+                  </button>
+                </div>
+              </form>
+
+              <section class="response" id="result" aria-live="polite" aria-atomic="true" hidden>
+                <p class="response-label">A note from the archive</p>
+                <p class="response-answer" id="answer"></p>
+                <div class="response-meta">
+                  <a id="source" target="_blank" rel="noopener noreferrer" hidden>View source page ↗</a>
+                  <span id="updated"></span>
+                </div>
+                <p class="response-error" id="error" role="alert"></p>
+              </section>
+            </div>
+            <aside class="assistant-aside" aria-label="Privacy reminder">
+              <span class="aside-stamp" aria-hidden="true">Diana's<br>garden<br>archive</span>
+              <p class="aside-copy">A small guide to the facts.<em>Con cura</em></p>
+              <p class="privacy-note">Please don’t enter PAN, Aadhaar, account numbers, OTPs, phone numbers, or email addresses.</p>
+            </aside>
+          </div>
+        </section>
+
+        <section class="sources-section container" id="schemes" aria-labelledby="sources-heading">
+          <div class="section-heading">
+            <div>
+              <span class="eyebrow">The source garden</span>
+              <h2 id="sources-heading">Five pages, no link crawling</h2>
+            </div>
+            <p>The assistant can cite only these allowlisted public pages. Links open the listed pages directly.</p>
+          </div>
+          <div class="source-grid">
+            <a class="source-card" href="https://groww.in/mutual-funds/amc/hdfc-mutual-funds" target="_blank" rel="noopener noreferrer">
+              <span><span class="source-title">HDFC Mutual Fund overview</span><span class="source-type">AMC overview · Groww</span></span><span class="source-arrow" aria-hidden="true">↗</span>
+            </a>
+            <a class="source-card" href="https://groww.in/mutual-funds/hdfc-large-cap-fund-direct-growth" target="_blank" rel="noopener noreferrer">
+              <span><span class="source-title">HDFC Large Cap Fund Direct Growth</span><span class="source-type">Large Cap · Groww</span></span><span class="source-arrow" aria-hidden="true">↗</span>
+            </a>
+            <a class="source-card" href="https://groww.in/mutual-funds/hdfc-equity-fund-direct-growth" target="_blank" rel="noopener noreferrer">
+              <span><span class="source-title">HDFC Flexi Cap Direct Plan Growth</span><span class="source-type">Flexi Cap · Groww</span></span><span class="source-arrow" aria-hidden="true">↗</span>
+            </a>
+            <a class="source-card" href="https://groww.in/mutual-funds/hdfc-elss-tax-saver-fund-direct-plan-growth" target="_blank" rel="noopener noreferrer">
+              <span><span class="source-title">HDFC ELSS Tax Saver Fund Direct Plan Growth</span><span class="source-type">ELSS · Groww</span></span><span class="source-arrow" aria-hidden="true">↗</span>
+            </a>
+            <a class="source-card" href="https://groww.in/mutual-funds/hdfc-mid-cap-fund-direct-growth" target="_blank" rel="noopener noreferrer">
+              <span><span class="source-title">HDFC Mid Cap Fund Direct Growth</span><span class="source-type">Mid Cap · Groww</span></span><span class="source-arrow" aria-hidden="true">↗</span>
+            </a>
+          </div>
+        </section>
+
+        <section class="pipeline-section container" id="pipeline" aria-labelledby="pipeline-heading">
+          <div class="section-heading">
+            <div>
+              <span class="eyebrow">Behind the answer</span>
+              <h2 id="pipeline-heading">From public page to cited fact</h2>
+            </div>
+            <p>The ingestion stages are stored as inspectable artifacts; retrieval uses the same embedding model and vector collection.</p>
+          </div>
+          <div class="pipeline">
+            <article class="pipeline-step"><h3>Load</h3><p>Fetch only the five configured public pages and validate them.</p></article>
+            <article class="pipeline-step"><h3>Chunk</h3><p>Split page text into traceable, scheme-specific excerpts.</p></article>
+            <article class="pipeline-step"><h3>Embed</h3><p>Encode chunks with the configured embedding model.</p></article>
+            <article class="pipeline-step"><h3>Store</h3><p>Keep chunk vectors and source metadata in Chroma Cloud.</p></article>
+            <article class="pipeline-step"><h3>Retrieve &amp; cite</h3><p>Find relevant evidence and attach its source URL and fetch date.</p></article>
+          </div>
+        </section>
+
+        <section class="container disclaimer" aria-label="Disclaimer">
+          <span class="disclaimer-icon" aria-hidden="true">✦</span>
+          <div>
+            <strong>Facts only · No financial advice</strong>
+            <p>This assistant provides factual information from the listed pages. It does not provide investment, legal, or tax advice, compare performance, or make recommendations. Don’t enter PAN, Aadhaar, account numbers, OTPs, phone numbers, or email addresses.</p>
+          </div>
+        </section>
+      </main>
+
+      <footer class="site-footer container">Growfolio · HDFC Mutual Fund FAQ prototype · Sources are public pages and may change.</footer>
+    </div>
+
     <script>
       const form = document.querySelector("#question-form");
-      const button = document.querySelector("#submit");
+      const questionField = document.querySelector("#question");
+      const providerField = document.querySelector("#provider");
+      const submitButton = document.querySelector("#submit");
       const result = document.querySelector("#result");
+      const answer = document.querySelector("#answer");
+      const source = document.querySelector("#source");
+      const updated = document.querySelector("#updated");
+      const errorMessage = document.querySelector("#error");
+
+      document.querySelectorAll("[data-question]").forEach((button) => {
+        button.addEventListener("click", () => {
+          questionField.value = button.dataset.question;
+          questionField.focus();
+        });
+      });
+
       form.addEventListener("submit", async (event) => {
         event.preventDefault();
+        if (!form.reportValidity()) return;
+
         result.hidden = false;
-        button.disabled = true;
-        button.textContent = "Searching…";
-        document.querySelector("#answer").textContent = "";
-        document.querySelector("#error").textContent = "";
-        document.querySelector("#source").hidden = true;
-        document.querySelector("#updated").textContent = "";
+        answer.textContent = "";
+        errorMessage.textContent = "";
+        updated.textContent = "";
+        source.hidden = true;
+        submitButton.disabled = true;
+        submitButton.querySelector("span").textContent = "Searching the archive…";
+
         try {
           const response = await fetch("/api/answer", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              question: document.querySelector("#question").value,
-              provider: document.querySelector("#provider").value
+              question: questionField.value,
+              provider: providerField.value
             })
           });
           const payload = await response.json();
-          if (!response.ok) throw new Error(payload.detail || "The request failed.");
-          document.querySelector("#answer").textContent = payload.answer;
-          const source = document.querySelector("#source");
-          source.href = payload.source_url;
+          if (!response.ok) {
+            throw new Error(payload.detail || "The request could not be completed.");
+          }
+          if (
+            typeof payload.answer !== "string" ||
+            typeof payload.source_url !== "string" ||
+            typeof payload.last_updated !== "string"
+          ) {
+            throw new Error("The assistant returned an incomplete response.");
+          }
+
+          const sourceUrl = new URL(payload.source_url);
+          if (sourceUrl.protocol !== "https:") {
+            throw new Error("The assistant returned an invalid source link.");
+          }
+          answer.textContent = payload.answer;
+          source.href = sourceUrl.href;
           source.hidden = false;
-          document.querySelector("#updated").textContent =
-            `Last updated from sources: ${payload.last_updated}`;
+          updated.textContent = `Last updated from sources: ${payload.last_updated}`;
         } catch (error) {
-          document.querySelector("#error").textContent = error.message;
+          errorMessage.textContent =
+            error instanceof Error ? error.message : "The request could not be completed.";
         } finally {
-          button.disabled = false;
-          button.textContent = "Ask";
+          submitButton.disabled = false;
+          submitButton.querySelector("span").textContent = "Ask the archive";
         }
       });
     </script>
