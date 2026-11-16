@@ -71,11 +71,11 @@ Ingestion uses `CHROMA_API_KEY`, `CHROMA_TENANT`, `CHROMA_DATABASE`, and optiona
 
 ## 7. Retrieval, API, and UI
 
-1. `POST /api/answer` validates a question (1–500 characters) and selected provider.
+1. `POST /api/answer` validates a question (1–500 characters); Gemini is the only accepted answer provider.
 2. The API blocks likely PII, advice, performance, and unsupported statement-download questions before embeddings or LLM calls.
 3. It generates an OpenAI query embedding, filters by named scheme, and requests configured top-k results from Chroma Cloud.
 4. It validates metadata, source allowlist, fetch date, distance, and the maximum-distance threshold.
-5. It sends excerpts from only the cited source to the selected LLM.
+5. It sends excerpts from only the cited source to Gemini 3.5 Flash-Lite.
 6. It rejects overlong, URL-bearing, or performance-related generated text.
 7. The API returns answer text, one application-owned source URL, and the source fetch date.
 
@@ -86,18 +86,19 @@ The static browser UI renders the result and disclaimer. It must not persist que
 - A named scheme is filtered to its approved page.
 - Weak retrieval does not call an LLM.
 - Each answer includes one source and `Last updated from sources:`.
-- Provider, embedding, and Chroma Cloud errors remain visible.
+- Gemini, embedding, and Chroma Cloud errors remain visible.
 
 ### UI design and interaction
 
 `public/index.html` adapts the `growfolio_dolce_vita_edition` Stitch export supplied in `stitch_growfolio.zip`. Preserve its Italian garden / vintage stationery direction with a white canvas, pale-blue cabana stripes, butter-yellow accents, Bodoni Moda display headings, readable body/control type, and subtle botanical and postal details. Keep decorative art secondary to facts, controls, citations, and large corpus figures.
 
-The page summarizes five approved source pages, four HDFC scheme pages, and five pipeline steps (load, chunk, embed, store, retrieve and cite). It lists the allowlisted sources, provides example-question chips, and sends only the question and selected answer provider to `POST /api/answer`. It renders answer text safely, displays the returned source link and `Last updated from sources:` date, and shows request errors visibly. Do not copy the generated Stitch mock answer, mock source metadata, or unverified financial metrics into the live UI.
+The page summarizes five approved source pages, four HDFC scheme pages, and five pipeline steps (load, chunk, embed, store, retrieve and cite). It lists the allowlisted sources, provides example-question chips, and sends the question with the fixed `gemini` provider to `POST /api/answer`. It renders answer text safely, displays the returned source link and `Last updated from sources:` date, and shows request errors visibly. Do not copy the generated Stitch mock answer, mock source metadata, or unverified financial metrics into the live UI.
 
 ### Check
 
 - The question form works with mouse and keyboard on mobile and desktop.
 - Example chips populate the question field but do not submit a request.
+- Gemini 3.5 Flash-Lite is the only model shown or submitted for answer generation.
 - The result card displays only the API response, one source link, and the fetch-date label.
 - Failed or malformed responses show an error; they never fall back to a sample financial answer.
 - Reduced-motion preferences disable decorative animation, and focus states remain visible.
@@ -118,7 +119,8 @@ The page summarizes five approved source pages, four HDFC scheme pages, and five
 
 ### Deployment checklist
 
-- Add `OPENAI_API_KEY`, `CHROMA_API_KEY`, `CHROMA_TENANT`, and `CHROMA_DATABASE` as Vercel Secret variables. Add `CHROMA_HOST` only for a non-default region.
+- Add `GEMINI_API_KEY`, `OPENAI_API_KEY`, `CHROMA_API_KEY`, `CHROMA_TENANT`, and `CHROMA_DATABASE` as Vercel Secret variables. Add `CHROMA_HOST` only for a non-default region.
+- Gemini free-tier quotas and data-use terms apply. OpenAI remains required for embeddings and can incur separate API costs.
 - Select Production and any desired Preview environments.
 - Deploy, run `python ingest_cloud.py` locally with the same keys and collection, and verify the ingestion manifest.
 - Configure Vercel Firewall rate limits before sharing the public URL; requests can incur API costs.

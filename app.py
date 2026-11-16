@@ -21,14 +21,14 @@ with (ROOT / "config.yaml").open(encoding="utf-8") as file:
 
 SOURCES = CONFIG["sources"]
 SOURCE_ALLOWLIST = {source["id"]: source["url"] for source in SOURCES}
-Provider = Literal["gemini", "openai", "anthropic", "mistral"]
+Provider = Literal["gemini"]
 
 app = FastAPI(title="HDFC Mutual Fund FAQ Assistant", version="1.0.0")
 
 
 class AskRequest(BaseModel):
     question: str = Field(min_length=1, max_length=500)
-    provider: Provider | None = None
+    provider: Provider = "gemini"
 
 
 def blocked_reason(question: str) -> str | None:
@@ -235,43 +235,19 @@ def call_llm(question: str, matches: list[dict], provider: Provider) -> str:
     )
     prompt = f"Question: {question}\n\nApproved source excerpts:\n{context}"
     endpoint = provider_config["endpoint"].format(model=provider_config["model"])
-    headers = {"Content-Type": "application/json"}
-    if provider == "anthropic":
-        headers.update({"x-api-key": api_key, "anthropic-version": "2023-06-01"})
-        payload = {
-            "model": provider_config["model"],
-            "max_tokens": 220,
-            "system": system,
-            "messages": [{"role": "user", "content": prompt}],
-        }
-    elif provider == "gemini":
-        endpoint = f"{endpoint}?key={api_key}"
-        payload = {
-            "system_instruction": {"parts": [{"text": system}]},
-            "contents": [{"parts": [{"text": prompt}]}],
-            "generationConfig": {"maxOutputTokens": 220, "temperature": 0},
-        }
-    else:
-        headers["Authorization"] = f"Bearer {api_key}"
-        payload = {
-            "model": provider_config["model"],
-            "temperature": 0,
-            "max_tokens": 220,
-            "messages": [
-                {"role": "system", "content": system},
-                {"role": "user", "content": prompt},
-            ],
-        }
+    headers = {
+        "Content-Type": "application/json",
+        "x-goog-api-key": api_key,
+    }
+    payload = {
+        "system_instruction": {"parts": [{"text": system}]},
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {"maxOutputTokens": 220, "temperature": 0},
+    }
     try:
         response = requests.post(endpoint, headers=headers, json=payload, timeout=45)
         response.raise_for_status()
-        data = response.json()
-        if provider == "anthropic":
-            answer = data["content"][0]["text"]
-        elif provider == "gemini":
-            answer = data["candidates"][0]["content"]["parts"][0]["text"]
-        else:
-            answer = data["choices"][0]["message"]["content"]
+        answer = response.json()["candidates"][0]["content"]["parts"][0]["text"]
     except requests.RequestException as error:
         raise HTTPException(status_code=502, detail=f"{provider} request failed.") from error
     except (KeyError, IndexError, TypeError, ValueError) as error:
@@ -328,8 +304,7 @@ def answer(request: AskRequest) -> dict[str, str]:
     supporting_matches = [
         match for match in matches if match["metadata"]["source_url"] == citation_url
     ]
-    provider = request.provider or CONFIG["deployment"]["default_provider"]
-    text = call_llm(question, supporting_matches, provider)
+    text = call_llm(question, supporting_matches, request.provider)
     text = re.sub(r"https?://\S+", "", text).strip()
     text = re.sub(r"\[[^\]]*\]\([^)]*\)", "", text).strip()
     sentences = [item for item in re.split(r"(?<=[.!?])\s+", text) if item.strip()]

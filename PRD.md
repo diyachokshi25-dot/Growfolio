@@ -128,11 +128,11 @@ Opinionated or portfolio questions (for example, “Should I buy or sell?”) re
 
 ### FR-5: LLM configuration
 
-- Primary provider: Groq.
-- Initial requested model identifier: `qwen/qwen3.8-27b`; verify provider availability before release.
-- Read the Groq API key and model identifier from local environment configuration (for example, `.env`), never commit secrets.
-- Support Gemini, OpenAI, Anthropic, and Mistral as selectable alternatives.
-- Keep provider/model settings configurable; surface API/configuration errors to the user.
+- Use Google Gemini 3.5 Flash-Lite (`gemini-3.5-flash-lite`) as the only answer-generation model.
+- Read `GEMINI_API_KEY` from environment configuration (for example, `.env` or Vercel Secret variables); never commit secrets.
+- Keep the Gemini model identifier in central configuration and surface API/configuration errors to the user.
+- OpenAI remains the embedding provider; it is separate from answer generation and may incur separate costs.
+- Document that Gemini free-tier quotas apply and that free-tier content may be used to improve Google products.
 - Do not persist prompts, questions, answers, or provider credentials.
 
 ### FR-6: Answer generation and citations
@@ -166,7 +166,7 @@ Re-ingestion must refresh the artifacts from the allowlisted pages and use the s
 
 ## 9. Configuration and privacy requirements
 
-- Central configuration must hold the source allowlist, chunking options, embedding provider/model, vector DB provider/path/collection, retrieval parameters, and provider/model choices.
+- Central configuration must hold the source allowlist, chunking options, embedding provider/model, vector DB provider/path/collection, retrieval parameters, and Gemini answer model.
 - API keys must be read from the local environment and excluded from source control and generated data artifacts.
 - No question or answer history is required for the prototype.
 - Any debug display must contain corpus passages only, not secrets or personal query content.
@@ -209,6 +209,6 @@ Re-ingestion must refresh the artifacts from the allowlisted pages and use the s
 - **Official-source conflict:** the five specified sources are Groww pages, while the skills requirement calls for citations from AMC/SEBI/AMFI pages. Confirm whether the five specified pages are sufficient or approve additional institutional sources.
 - **Statement guidance:** the five scheme/AMC pages may not contain statement-download steps. Add an approved official source or keep these questions explicitly unsupported.
 - **Factsheet link:** an approved official AMC factsheet/disclosure URL is needed for performance-question refusals.
-- **Model availability:** verify the exact Groq model ID `qwen/qwen3.8-27b`; keep it configurable so provider changes do not require code changes.
+- **Gemini free tier:** quotas, model availability, and data-use terms may change; verify Google's current terms before release.
 - **Source freshness:** scheme values can change. Fetch dates must be visible, and the prototype must not imply that a past fetch is current.
 - **Prototype security:** local environment keys and in-memory query processing are suitable only for a demo; public deployment requires a separate privacy/security review.

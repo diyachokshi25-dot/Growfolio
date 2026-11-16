@@ -482,6 +482,28 @@
 
       .field-group { min-width: 0; }
 
+      .fixed-model {
+        display: flex;
+        min-height: 46px;
+        flex-direction: column;
+        justify-content: center;
+        gap: 2px;
+        padding: 5px 12px;
+        border: 1px solid #c9d7e4;
+        border-radius: 10px;
+        background: #fff;
+      }
+
+      .fixed-model strong {
+        color: #33475b;
+        font-size: 11px;
+      }
+
+      .fixed-model small {
+        color: var(--muted);
+        font-size: 9px;
+      }
+
       .ask-button {
         display: inline-flex;
         min-height: 48px;
@@ -918,13 +940,11 @@
                 </div>
                 <div class="form-row">
                   <div class="field-group">
-                    <label for="provider">Answer model</label>
-                    <select id="provider" name="provider">
-                      <option value="openai" selected>OpenAI</option>
-                      <option value="gemini">Gemini</option>
-                      <option value="anthropic">Anthropic</option>
-                      <option value="mistral">Mistral</option>
-                    </select>
+                    <label id="answer-model-label">Answer model</label>
+                    <div class="fixed-model" role="group" aria-labelledby="answer-model-label">
+                      <strong>Gemini 3.5 Flash-Lite</strong>
+                      <small>Free-tier eligible · quotas apply</small>
+                    </div>
                   </div>
                   <button class="ask-button" id="submit" type="submit">
                     <span>Ask the archive</span><span class="arrow" aria-hidden="true">→</span>
@@ -945,7 +965,7 @@
             <aside class="assistant-aside" aria-label="Privacy reminder">
               <span class="aside-stamp" aria-hidden="true">Diana's<br>garden<br>archive</span>
               <p class="aside-copy">A small guide to the facts.<em>Con cura</em></p>
-              <p class="privacy-note">Please don’t enter PAN, Aadhaar, account numbers, OTPs, phone numbers, or email addresses.</p>
+              <p class="privacy-note">Gemini free-tier data-use terms apply. Don’t enter PAN, Aadhaar, account numbers, OTPs, phone numbers, or email addresses.</p>
             </aside>
           </div>
         </section>
@@ -1009,7 +1029,6 @@
     <script>
       const form = document.querySelector("#question-form");
       const questionField = document.querySelector("#question");
-      const providerField = document.querySelector("#provider");
       const submitButton = document.querySelector("#submit");
       const result = document.querySelector("#result");
       const answer = document.querySelector("#answer");
@@ -1042,7 +1061,7 @@
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               question: questionField.value,
-              provider: providerField.value
+              provider: "gemini"
             })
           });
           const payload = await response.json();

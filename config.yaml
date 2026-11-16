@@ -37,26 +37,12 @@ retrieval:
   max_distance: 0.9
 
 deployment:
-  default_provider: openai
   embedding_model: text-embedding-3-small
   collection_name: hdfc_mutual_fund_faq
 
 llm:
-  default_provider: gemini
   providers:
     gemini:
-      model: gemini-2.5-flash
+      model: gemini-3.5-flash-lite
       api_key_env: GEMINI_API_KEY
       endpoint: https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent
-    openai:
-      model: gpt-4o-mini
-      api_key_env: OPENAI_API_KEY
-      endpoint: https://api.openai.com/v1/chat/completions
-    anthropic:
-      model: claude-3-5-sonnet-latest
-      api_key_env: ANTHROPIC_API_KEY
-      endpoint: https://api.anthropic.com/v1/messages
-    mistral:
-      model: mistral-small-latest
-      api_key_env: MISTRAL_API_KEY
-      endpoint: https://api.mistral.ai/v1/chat/completions

@@ -29,7 +29,7 @@ flowchart LR
     Guard --> Embed[OpenAI embeddings]
     Embed --> Search[Chroma Cloud retrieval]
     Search -->|source excerpts and metadata| Answer[Answer orchestrator]
-    Answer --> LLM[Selected LLM provider]
+    Answer --> LLM[Gemini 3.5 Flash-Lite]
     LLM -->|draft| Answer
     Answer -->|answer, one source, fetch date| UI
     Ingest[Local ingest_cloud.py] --> Fetch[Five-page allowlist scraper]
@@ -44,7 +44,7 @@ flowchart LR
 
 - **Browser to API:** input is untrusted and checked before any embedding or LLM call.
 - **Ingestion to public sites:** only exact configured source URLs are fetched; redirects are rejected.
-- **API to providers:** only safe questions and retrieved excerpts are sent to the configured provider APIs.
+- **API to Gemini:** only safe questions and retrieved excerpts are sent to the Gemini API.
 - **Vercel to Chroma Cloud:** the vector database is external and durable; credentials are server-side environment secrets.
 - **Local ingestion machine:** contains temporary public-source artifacts, not saved Q&A history or API keys in the repository.
 
@@ -56,17 +56,17 @@ flowchart LR
 
 The page provides:
 
-- A prominent question form, answer-model selector, and example-question chips that only fill the question field.
+- A prominent question form, fixed Gemini 3.5 Flash-Lite label, and example-question chips that only fill the question field.
 - Corpus summaries for five approved pages, four scheme pages, and five pipeline steps.
 - A directory of the five allowlisted public source pages and a visual load/chunk/embed/store/retrieve flow.
 - A response card that renders the API answer as text and displays exactly the API-provided source URL and fetch date.
 - Facts-only and privacy notices, responsive layouts, visible keyboard focus, and reduced-motion support.
 
-The browser sends only the question and selected answer provider to `POST /api/answer`; it does not persist question history or receive provider credentials. Network and API errors are shown in the response card rather than replaced with a sample answer.
+The browser sends the question and the fixed `gemini` provider to `POST /api/answer`; it does not persist question history or receive provider credentials. Network and API errors are shown in the response card rather than replaced with a sample answer.
 
 ### 4.2 FastAPI application
 
-`app.py` exports the top-level FastAPI `app` expected by Vercel’s Python runtime. It validates request length and provider selection, runs guardrails, creates query embeddings, searches Chroma Cloud, calls the selected LLM, validates the answer, and returns a small JSON response. `/api/health` is a basic health endpoint.
+`app.py` exports the top-level FastAPI `app` expected by Vercel’s Python runtime. It validates request length and accepts only the Gemini answer provider, runs guardrails, creates query embeddings, searches Chroma Cloud, calls Gemini, validates the answer, and returns a small JSON response. `/api/health` is a basic health endpoint.
 
 The app does not load or embed the local Sentence Transformers model. This keeps local ML model weights out of the serverless function bundle.
 
@@ -105,17 +105,16 @@ Before any external model call, the API:
 
 ### 4.6 LLM provider adapter
 
-The default provider is OpenAI. Gemini, Anthropic, and Mistral are selectable alternatives in the UI when their API keys are configured. OpenAI is still required for embeddings, regardless of the selected answer-generation provider.
+Gemini 3.5 Flash-Lite is the only answer model. Its model ID is in `config.yaml`; `GEMINI_API_KEY` authenticates answer-generation requests. The Gemini free tier has quotas, and Google's terms allow free-tier content to be used to improve its products. OpenAI remains required for embeddings and may incur separate costs.
 
 ## 5. Configuration and secrets
 
-Non-secret settings live in `config.yaml`: source allowlist, scraper limits, chunk size, retrieval `top_k` and distance threshold, provider models, OpenAI embedding model, and Chroma Cloud collection name.
+Non-secret settings live in `config.yaml`: source allowlist, scraper limits, chunk size, retrieval `top_k` and distance threshold, Gemini answer model, OpenAI embedding model, and Chroma Cloud collection name.
 
 Vercel environment variables:
 
-- Required: `OPENAI_API_KEY`, `CHROMA_API_KEY`, `CHROMA_TENANT`, `CHROMA_DATABASE`.
+- Required: `GEMINI_API_KEY`, `OPENAI_API_KEY`, `CHROMA_API_KEY`, `CHROMA_TENANT`, `CHROMA_DATABASE`.
 - Optional: `CHROMA_HOST` for a non-default Chroma Cloud region.
-- Optional answer providers: `GEMINI_API_KEY`, `ANTHROPIC_API_KEY`, `MISTRAL_API_KEY`.
 
 Use Vercel’s secret environment variable type; do not use a `NEXT_PUBLIC_` prefix. `.env` is ignored and must never be committed. `.env.example` contains names only.
 

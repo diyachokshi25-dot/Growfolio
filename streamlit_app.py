@@ -666,12 +666,12 @@ def retrieve(question: str) -> list[dict[str, Any]]:
     return matches
 
 
-def call_llm(question: str, matches: list[dict[str, Any]], provider: str) -> str:
-    provider_config = CONFIG["llm"]["providers"][provider]
+def call_llm(question: str, matches: list[dict[str, Any]]) -> str:
+    provider_config = CONFIG["llm"]["providers"]["gemini"]
     api_key = os.getenv(provider_config["api_key_env"])
     if not api_key:
         raise RuntimeError(
-            f"Set {provider_config['api_key_env']} to use {provider}."
+            f"Set {provider_config['api_key_env']} to use Gemini."
         )
 
     context = "\n\n".join(
@@ -690,47 +690,26 @@ def call_llm(question: str, matches: list[dict[str, Any]], provider: str) -> str
     )
     prompt = f"Question: {question}\n\nApproved source excerpts:\n{context}"
     endpoint = provider_config["endpoint"].format(model=provider_config["model"])
-    headers = {"Content-Type": "application/json"}
-    if provider == "anthropic":
-        headers.update(
-            {
-                "x-api-key": api_key,
-                "anthropic-version": "2023-06-01",
-            }
-        )
-        payload = {
-            "model": provider_config["model"],
-            "max_tokens": 220,
-            "system": system,
-            "messages": [{"role": "user", "content": prompt}],
-        }
+    headers = {
+        "Content-Type": "application/json",
+        "x-goog-api-key": api_key,
+    }
+    payload = {
+        "system_instruction": {"parts": [{"text": system}]},
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {"maxOutputTokens": 220, "temperature": 0},
+    }
+    try:
         response = requests.post(endpoint, headers=headers, json=payload, timeout=45)
         response.raise_for_status()
-        return response.json()["content"][0]["text"].strip()
-    if provider == "gemini":
-        endpoint = f"{endpoint}?key={api_key}"
-        payload = {
-            "system_instruction": {"parts": [{"text": system}]},
-            "contents": [{"parts": [{"text": prompt}]}],
-            "generationConfig": {"maxOutputTokens": 220, "temperature": 0},
-        }
-        response = requests.post(endpoint, json=payload, timeout=45)
-        response.raise_for_status()
-        return response.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
-
-    headers["Authorization"] = f"Bearer {api_key}"
-    payload = {
-        "model": provider_config["model"],
-        "temperature": 0,
-        "max_tokens": 220,
-        "messages": [
-            {"role": "system", "content": system},
-            {"role": "user", "content": prompt},
-        ],
-    }
-    response = requests.post(endpoint, headers=headers, json=payload, timeout=45)
-    response.raise_for_status()
-    return response.json()["choices"][0]["message"]["content"].strip()
+        answer = response.json()["candidates"][0]["content"]["parts"][0]["text"]
+    except requests.RequestException as error:
+        raise RuntimeError("Gemini request failed.") from error
+    except (KeyError, IndexError, TypeError, ValueError) as error:
+        raise RuntimeError("Gemini returned an invalid response.") from error
+    if not isinstance(answer, str):
+        raise RuntimeError("Gemini returned a non-text response.")
+    return answer.strip()
 
 
 def blocked_reason(question: str) -> str | None:
@@ -771,7 +750,7 @@ def source_last_updated(matches: list[dict[str, Any]], url: str) -> str:
     return "Not available (source not fetched)"
 
 
-def answer_question(question: str, provider: str) -> tuple[str, str, str]:
+def answer_question(question: str) -> tuple[str, str, str]:
     reason = blocked_reason(question)
     if reason:
         url = (
@@ -812,7 +791,7 @@ def answer_question(question: str, provider: str) -> tuple[str, str, str]:
         for match in matches
         if match["metadata"]["source_url"] == citation_url
     ]
-    answer = call_llm(question, supporting_matches, provider)
+    answer = call_llm(question, supporting_matches)
     answer = re.sub(r"https?://\S+", "", answer).strip()
     answer = re.sub(r"\[[^\]]*\]\([^)]*\)", "", answer).strip()
     if re.search(
@@ -862,15 +841,10 @@ with st.sidebar:
     st.subheader("Pipeline configuration")
     st.write(f"Embedding: `{CONFIG['embedding']['model']}`")
     st.write(f"Vector DB: `ChromaDB` · {CONFIG['vector_db']['collection_name']}")
-    provider_options = list(CONFIG["llm"]["providers"])
-    provider = st.selectbox(
-        "LLM provider",
-        provider_options,
-        index=provider_options.index(CONFIG["llm"]["default_provider"]),
-    )
+    st.write("Answer model: `Gemini 3.5 Flash-Lite`")
     st.caption(
-        "The selected provider uses its matching API key from the environment; "
-        "keys and questions are not saved by this app."
+        "Gemini free-tier quotas and data-use terms apply. "
+        "Questions and keys are not saved by this app."
     )
     if st.button("Run all ingestion phases", type="primary"):
         try:
@@ -893,7 +867,7 @@ question = st.text_input("Ask a scheme fact", max_chars=500)
 if st.button("Ask", disabled=not question.strip()):
     try:
         with st.spinner("Retrieving source passages…"):
-            answer, citation, updated = answer_question(question.strip(), provider)
+            answer, citation, updated = answer_question(question.strip())
         render_answer(answer, citation, updated)
     except Exception as error:
         st.error(f"Could not answer this question: {error}")
