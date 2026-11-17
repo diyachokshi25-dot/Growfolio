@@ -42,7 +42,7 @@ deployment:
 
 llm:
   providers:
-    gemini:
-      model: gemini-3.5-flash-lite
-      api_key_env: GEMINI_API_KEY
-      endpoint: https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent
+    groq:
+      model: openai/gpt-oss-20b
+      api_key_env: GROQ_API_KEY
+      endpoint: https://api.groq.com/openai/v1/chat/completions

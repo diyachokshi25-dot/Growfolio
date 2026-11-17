@@ -1,6 +1,6 @@
 # HDFC mutual fund FAQ assistant
 
-A facts-only FAQ prototype for five HDFC mutual-fund pages. The Vercel deployment uses a FastAPI API, a static browser UI, Gemini 3.5 Flash-Lite for answer generation, OpenAI embeddings, and Chroma Cloud. It does not provide investment advice or save questions and answers.
+A facts-only FAQ prototype for five HDFC mutual-fund pages. The Vercel deployment uses a FastAPI API, a static browser UI, Groq `openai/gpt-oss-20b` for answer generation, OpenAI embeddings, and Chroma Cloud. It does not provide investment advice or save questions and answers.
 
 ## Deploy on Vercel
 
@@ -10,15 +10,15 @@ A facts-only FAQ prototype for five HDFC mutual-fund pages. The Vercel deploymen
 
    | Name | Value |
    | --- | --- |
-   | `GEMINI_API_KEY` | Google AI Studio API key. Required for Gemini 3.5 Flash-Lite answer generation. |
-   | `OPENAI_API_KEY` | OpenAI API key. Required for ingestion and query-time embeddings; this remains a separate API cost even when Gemini answers are on the free tier. |
+   | `GROQ_API_KEY` | Groq API key. Required for `openai/gpt-oss-20b` answer generation. |
+   | `OPENAI_API_KEY` | OpenAI API key. Required for ingestion and query-time embeddings; this may have a separate API cost. |
    | `CHROMA_API_KEY` | Chroma Cloud API key |
    | `CHROMA_TENANT` | Chroma Cloud tenant ID |
    | `CHROMA_DATABASE` | Chroma Cloud database name |
    | `CHROMA_HOST` | Optional regional host; leave unset for the default AWS US East region. |
 
    Do not add a `NEXT_PUBLIC_` prefix, paste keys into source files, or commit `.env`.
-   Create a Gemini key in [Google AI Studio](https://aistudio.google.com/apikey). Gemini's free tier has usage quotas and may use submitted content to improve Google products; never submit personal information.
+   Create a key in the [Groq Console](https://console.groq.com/team/default/api-keys). Groq's Free plan is for building and testing and has account-specific rate limits; check the [rate limits](https://console.groq.com/docs/rate-limits) for your organization. Never submit personal information.
 4. Deploy. Vercel's Python runtime detects the FastAPI `app` in `app.py`; static files are served from `public/`.
 5. Before asking questions, populate Chroma Cloud once from a trusted local machine:
 
@@ -32,20 +32,20 @@ A facts-only FAQ prototype for five HDFC mutual-fund pages. The Vercel deploymen
    ```
 
    Ingestion fetches only the five allowlisted Groww pages, embeds them with the same configured OpenAI model used at query time, and stores chunks in the configured Chroma Cloud collection. It also writes inspectable stage artifacts under ignored `data/`.
-6. Visit the Vercel deployment URL and ask a factual question. Gemini 3.5 Flash-Lite is the only answer model.
+6. Visit the Vercel deployment URL and ask a factual question. Groq `openai/gpt-oss-20b` is the only answer model. When Groq reports the daily request quota is exhausted, the API responds: “Limit for the day reached. Please try again after the daily quota resets.” Short-term rate limits receive a retry-soon message.
 
 The API health check is `/api/health`. If Vercel environment variables change, redeploy so the new values are available to the deployment.
 
 ## Local options
 
 - Run the Vercel-compatible API locally with `uvicorn app:app --reload`; it serves the API. Open `public/index.html` separately or use `vercel dev` to test the Vercel routing and static UI together.
-- The previous Streamlit prototype remains in `streamlit_app.py`. To run it locally, install `requirements-streamlit.txt`, set its configured local embedding model and `GEMINI_API_KEY`, then run `streamlit run streamlit_app.py`. Its local ChromaDB index is separate from the Vercel Chroma Cloud collection.
+- The previous Streamlit prototype remains in `streamlit_app.py`. To run it locally, install `requirements-streamlit.txt`, set its configured local embedding model and `GROQ_API_KEY`, then run `streamlit run streamlit_app.py`. Its local ChromaDB index is separate from the Vercel Chroma Cloud collection.
 
 ## Scope and limits
 
 - Only the five URLs in `config.yaml` are scraped; links found on those pages are not followed.
 - OpenAI `text-embedding-3-small` and cosine distance are used for both ingestion and query retrieval. Switching the model requires a new Chroma collection and a fresh ingestion.
-- Gemini 3.5 Flash-Lite is the sole answer model. Free-tier quotas and Google's free-tier data-use terms apply; OpenAI embeddings and Chroma Cloud have separate quotas or costs.
+- Groq `openai/gpt-oss-20b` is the sole answer model. Groq Free plan model availability and limits are account-specific; OpenAI embeddings and Chroma Cloud have separate quotas or costs.
 - Chroma Cloud is required for Vercel because serverless local files are not a durable vector database.
 - The source corpus does not explain statement downloads; the assistant declines to invent steps.
 - This is a demo, not a production financial-support service. Review source freshness, security, cost, rate limits, privacy, and provider terms before public use.

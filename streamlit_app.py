@@ -17,6 +17,8 @@ from bs4 import BeautifulSoup
 from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
 from dotenv import load_dotenv
 
+from rate_limits import groq_rate_limit_message
+
 
 ROOT = Path(__file__).parent
 CONFIG_PATH = ROOT / "config.yaml"
@@ -667,11 +669,11 @@ def retrieve(question: str) -> list[dict[str, Any]]:
 
 
 def call_llm(question: str, matches: list[dict[str, Any]]) -> str:
-    provider_config = CONFIG["llm"]["providers"]["gemini"]
+    provider_config = CONFIG["llm"]["providers"]["groq"]
     api_key = os.getenv(provider_config["api_key_env"])
     if not api_key:
         raise RuntimeError(
-            f"Set {provider_config['api_key_env']} to use Gemini."
+            f"Set {provider_config['api_key_env']} to use Groq."
         )
 
     context = "\n\n".join(
@@ -689,26 +691,37 @@ def call_llm(question: str, matches: list[dict[str, Any]]) -> str:
         "Do not repeat or request personal or account information."
     )
     prompt = f"Question: {question}\n\nApproved source excerpts:\n{context}"
-    endpoint = provider_config["endpoint"].format(model=provider_config["model"])
+    endpoint = provider_config["endpoint"]
     headers = {
         "Content-Type": "application/json",
-        "x-goog-api-key": api_key,
+        "Authorization": f"Bearer {api_key}",
     }
     payload = {
-        "system_instruction": {"parts": [{"text": system}]},
-        "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {"maxOutputTokens": 220, "temperature": 0},
+        "model": provider_config["model"],
+        "messages": [
+            {"role": "system", "content": system},
+            {"role": "user", "content": prompt},
+        ],
+        "max_completion_tokens": 512,
+        "temperature": 0.2,
+        "reasoning_effort": "low",
+        "include_reasoning": False,
     }
     try:
         response = requests.post(endpoint, headers=headers, json=payload, timeout=45)
         response.raise_for_status()
-        answer = response.json()["candidates"][0]["content"]["parts"][0]["text"]
+        answer = response.json()["choices"][0]["message"]["content"]
+    except requests.HTTPError as error:
+        response = error.response
+        if response is not None and response.status_code == 429:
+            raise RuntimeError(groq_rate_limit_message(response.headers)) from error
+        raise RuntimeError("Groq request failed.") from error
     except requests.RequestException as error:
-        raise RuntimeError("Gemini request failed.") from error
+        raise RuntimeError("Groq request failed.") from error
     except (KeyError, IndexError, TypeError, ValueError) as error:
-        raise RuntimeError("Gemini returned an invalid response.") from error
+        raise RuntimeError("Groq returned an invalid response.") from error
     if not isinstance(answer, str):
-        raise RuntimeError("Gemini returned a non-text response.")
+        raise RuntimeError("Groq returned a non-text response.")
     return answer.strip()
 
 
@@ -841,9 +854,9 @@ with st.sidebar:
     st.subheader("Pipeline configuration")
     st.write(f"Embedding: `{CONFIG['embedding']['model']}`")
     st.write(f"Vector DB: `ChromaDB` · {CONFIG['vector_db']['collection_name']}")
-    st.write("Answer model: `Gemini 3.5 Flash-Lite`")
+    st.write("Answer model: `Groq · openai/gpt-oss-20b`")
     st.caption(
-        "Gemini free-tier quotas and data-use terms apply. "
+        "Groq Free plan quotas apply. "
         "Questions and keys are not saved by this app."
     )
     if st.button("Run all ingestion phases", type="primary"):

@@ -12,6 +12,8 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
+from rate_limits import groq_rate_limit_message
+
 
 ROOT = Path(__file__).parent
 load_dotenv(ROOT / ".env")
@@ -21,14 +23,14 @@ with (ROOT / "config.yaml").open(encoding="utf-8") as file:
 
 SOURCES = CONFIG["sources"]
 SOURCE_ALLOWLIST = {source["id"]: source["url"] for source in SOURCES}
-Provider = Literal["gemini"]
+Provider = Literal["groq"]
 
 app = FastAPI(title="HDFC Mutual Fund FAQ Assistant", version="1.0.0")
 
 
 class AskRequest(BaseModel):
     question: str = Field(min_length=1, max_length=500)
-    provider: Provider = "gemini"
+    provider: Provider = "groq"
 
 
 def blocked_reason(question: str) -> str | None:
@@ -234,26 +236,40 @@ def call_llm(question: str, matches: list[dict], provider: Provider) -> str:
         "most two short sentences. Do not invent URLs or request personal data."
     )
     prompt = f"Question: {question}\n\nApproved source excerpts:\n{context}"
-    endpoint = provider_config["endpoint"].format(model=provider_config["model"])
+    endpoint = provider_config["endpoint"]
     headers = {
         "Content-Type": "application/json",
-        "x-goog-api-key": api_key,
+        "Authorization": f"Bearer {api_key}",
     }
     payload = {
-        "system_instruction": {"parts": [{"text": system}]},
-        "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {"maxOutputTokens": 220, "temperature": 0},
+        "model": provider_config["model"],
+        "messages": [
+            {"role": "system", "content": system},
+            {"role": "user", "content": prompt},
+        ],
+        "max_completion_tokens": 512,
+        "temperature": 0.2,
+        "reasoning_effort": "low",
+        "include_reasoning": False,
     }
     try:
         response = requests.post(endpoint, headers=headers, json=payload, timeout=45)
         response.raise_for_status()
-        answer = response.json()["candidates"][0]["content"]["parts"][0]["text"]
+        answer = response.json()["choices"][0]["message"]["content"]
+    except requests.HTTPError as error:
+        response = error.response
+        if response is not None and response.status_code == 429:
+            raise HTTPException(
+                status_code=429,
+                detail=groq_rate_limit_message(response.headers),
+            ) from error
+        raise HTTPException(status_code=502, detail="Groq request failed.") from error
     except requests.RequestException as error:
-        raise HTTPException(status_code=502, detail=f"{provider} request failed.") from error
+        raise HTTPException(status_code=502, detail="Groq request failed.") from error
     except (KeyError, IndexError, TypeError, ValueError) as error:
-        raise HTTPException(status_code=502, detail=f"{provider} returned an invalid response.") from error
+        raise HTTPException(status_code=502, detail="Groq returned an invalid response.") from error
     if not isinstance(answer, str):
-        raise HTTPException(status_code=502, detail=f"{provider} returned a non-text response.")
+        raise HTTPException(status_code=502, detail="Groq returned a non-text response.")
     return answer.strip()
 
 

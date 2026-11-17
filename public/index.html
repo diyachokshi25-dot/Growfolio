@@ -942,8 +942,8 @@
                   <div class="field-group">
                     <label id="answer-model-label">Answer model</label>
                     <div class="fixed-model" role="group" aria-labelledby="answer-model-label">
-                      <strong>Gemini 3.5 Flash-Lite</strong>
-                      <small>Free-tier eligible · quotas apply</small>
+                      <strong>Groq · GPT-OSS 20B</strong>
+                      <small>Free plan · usage limits apply</small>
                     </div>
                   </div>
                   <button class="ask-button" id="submit" type="submit">
@@ -965,7 +965,7 @@
             <aside class="assistant-aside" aria-label="Privacy reminder">
               <span class="aside-stamp" aria-hidden="true">Diana's<br>garden<br>archive</span>
               <p class="aside-copy">A small guide to the facts.<em>Con cura</em></p>
-              <p class="privacy-note">Gemini free-tier data-use terms apply. Don’t enter PAN, Aadhaar, account numbers, OTPs, phone numbers, or email addresses.</p>
+              <p class="privacy-note">Groq Free plan limits apply. Don’t enter PAN, Aadhaar, account numbers, OTPs, phone numbers, or email addresses.</p>
             </aside>
           </div>
         </section>
@@ -1061,7 +1061,7 @@
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               question: questionField.value,
-              provider: "gemini"
+              provider: "groq"
             })
           });
           const payload = await response.json();
