@@ -5,13 +5,15 @@ from datetime import date
 from pathlib import Path
 from typing import Literal
 
-import chromadb
+import psycopg
 import requests
 import yaml
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
+from pgvector import Vector
 from pydantic import BaseModel, Field
 
+from neon_store import VECTOR_TABLE, connect_neon
 from rate_limits import groq_rate_limit_message
 
 
@@ -94,49 +96,29 @@ def embed_query(question: str) -> list[float]:
         or any(not isinstance(value, (int, float)) or not math.isfinite(value) for value in vector)
     ):
         raise HTTPException(status_code=502, detail="The embedding provider returned an invalid vector.")
+    if len(vector) != CONFIG["deployment"]["embedding_dimensions"]:
+        raise HTTPException(
+            status_code=502,
+            detail="The query embedding dimension does not match the Neon vector table.",
+        )
     return [float(value) for value in vector]
 
 
-def cloud_collection():
-    required = ("CHROMA_API_KEY", "CHROMA_TENANT", "CHROMA_DATABASE")
-    missing = [name for name in required if not os.getenv(name)]
-    if missing:
+def neon_connection():
+    if CONFIG["deployment"]["vector_db"] != "neon_pgvector":
         raise HTTPException(
-            status_code=503,
-            detail=f"Chroma Cloud is not configured; missing: {', '.join(missing)}.",
+            status_code=500,
+            detail="The configured deployment vector database is not supported.",
         )
-
-    client_options: dict[str, str] = {
-        "api_key": os.environ["CHROMA_API_KEY"],
-        "tenant": os.environ["CHROMA_TENANT"],
-        "database": os.environ["CHROMA_DATABASE"],
-    }
-    cloud_host = os.getenv("CHROMA_HOST")
-    if cloud_host:
-        client_options["cloud_host"] = cloud_host
+    if not os.getenv("DATABASE_URL"):
+        raise HTTPException(status_code=503, detail="DATABASE_URL is not configured.")
     try:
-        client = chromadb.CloudClient(**client_options)
-        collection = client.get_collection(
-            name=CONFIG["deployment"]["collection_name"],
-            embedding_function=None,
-        )
-    except chromadb.errors.ChromaError as error:
+        return connect_neon()
+    except psycopg.Error as error:
         raise HTTPException(
             status_code=503,
-            detail="Could not access the configured Chroma Cloud collection.",
+            detail="Could not connect to Neon Postgres or enable pgvector.",
         ) from error
-    indexed_model = (collection.metadata or {}).get("embedding_model")
-    if indexed_model != CONFIG["deployment"]["embedding_model"]:
-        raise HTTPException(
-            status_code=503,
-            detail="The indexed embedding model does not match configuration; re-ingest the corpus.",
-        )
-    if (collection.metadata or {}).get("hnsw:space") != "cosine":
-        raise HTTPException(
-            status_code=503,
-            detail="The Chroma Cloud collection must use cosine distance; re-create it before ingestion.",
-        )
-    return collection
 
 
 def target_source(question: str) -> str | None:
@@ -156,59 +138,94 @@ def retrieve(question: str) -> list[dict]:
     top_k = CONFIG["retrieval"]["top_k"]
     if type(top_k) is not int or top_k < 1:
         raise HTTPException(status_code=500, detail="retrieval.top_k must be a positive integer.")
-    collection = cloud_collection()
+    query_vector = Vector(embed_query(question))
+    source_id = target_source(question)
     try:
-        if collection.count() == 0:
-            raise HTTPException(
-                status_code=503,
-                detail="The Chroma Cloud collection is empty; run ingest_cloud.py first.",
-            )
-        query = {
-            "query_embeddings": [embed_query(question)],
-            "n_results": top_k,
-            "include": ["documents", "metadatas", "distances"],
-        }
-        source_id = target_source(question)
-        if source_id:
-            query["where"] = {"source_id": source_id}
-        result = collection.query(**query)
+        with neon_connection() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(f"SELECT COUNT(*) FROM {VECTOR_TABLE}")
+                row_count = cursor.fetchone()[0]
+                if row_count == 0:
+                    raise HTTPException(
+                        status_code=503,
+                        detail="The Neon vector table is empty; run ingest_neon.py first.",
+                    )
+
+                if source_id:
+                    cursor.execute(
+                        f"""
+                        SELECT text, source_id, source_title, source_url,
+                               fetched_at, section, embedding_model,
+                               embedding <=> %s AS distance
+                        FROM {VECTOR_TABLE}
+                        WHERE source_id = %s
+                        ORDER BY embedding <=> %s
+                        LIMIT %s
+                        """,
+                        (query_vector, source_id, query_vector, top_k),
+                    )
+                else:
+                    cursor.execute(
+                        f"""
+                        SELECT text, source_id, source_title, source_url,
+                               fetched_at, section, embedding_model,
+                               embedding <=> %s AS distance
+                        FROM {VECTOR_TABLE}
+                        ORDER BY embedding <=> %s
+                        LIMIT %s
+                        """,
+                        (query_vector, query_vector, top_k),
+                    )
+                rows = cursor.fetchall()
     except HTTPException:
         raise
-    except chromadb.errors.ChromaError as error:
-        raise HTTPException(status_code=502, detail="Chroma Cloud retrieval failed.") from error
-
-    documents = result.get("documents")
-    metadatas = result.get("metadatas")
-    distances = result.get("distances")
-    if not documents or not documents[0]:
-        return []
-    if (
-        not metadatas
-        or not metadatas[0]
-        or not distances
-        or len(documents[0]) != len(metadatas[0])
-        or len(documents[0]) != len(distances[0])
-    ):
-        raise HTTPException(status_code=502, detail="Chroma Cloud returned incomplete results.")
+    except psycopg.errors.UndefinedTable as error:
+        raise HTTPException(
+            status_code=503,
+            detail="The Neon vector table is not initialized; run ingest_neon.py first.",
+        ) from error
+    except psycopg.Error as error:
+        raise HTTPException(status_code=502, detail="Neon Postgres retrieval failed.") from error
 
     matches = []
-    for text, metadata, distance in zip(documents[0], metadatas[0], distances[0]):
-        if not isinstance(text, str) or not text.strip() or not isinstance(metadata, dict):
-            raise HTTPException(status_code=502, detail="Chroma Cloud returned invalid chunk data.")
-        source_url = metadata.get("source_url")
-        if source_url not in SOURCE_ALLOWLIST.values() and source_url != "https://www.hdfcfund.com/":
-            raise HTTPException(status_code=502, detail="Chroma Cloud returned an unapproved source.")
+    for (
+        text,
+        result_source_id,
+        source_title,
+        source_url,
+        fetched_at,
+        section,
+        embedding_model,
+        distance,
+    ) in rows:
+        if not isinstance(text, str) or not text.strip():
+            raise HTTPException(status_code=502, detail="Neon returned an invalid chunk.")
+        if (
+            result_source_id not in SOURCE_ALLOWLIST
+            or SOURCE_ALLOWLIST[result_source_id] != source_url
+        ):
+            raise HTTPException(status_code=502, detail="Neon returned an unapproved source.")
+        if embedding_model != CONFIG["deployment"]["embedding_model"]:
+            raise HTTPException(
+                status_code=503,
+                detail="The indexed embedding model does not match configuration; re-ingest the corpus.",
+            )
         if not isinstance(distance, (int, float)) or not math.isfinite(distance):
-            raise HTTPException(status_code=502, detail="Chroma Cloud returned an invalid distance.")
-        fetched_at = metadata.get("fetched_at")
-        if not isinstance(fetched_at, str):
+            raise HTTPException(status_code=502, detail="Neon returned an invalid distance.")
+        if not isinstance(fetched_at, date):
             raise HTTPException(status_code=502, detail="Retrieved source has an invalid fetch date.")
-        try:
-            date.fromisoformat(fetched_at)
-        except ValueError as error:
-            raise HTTPException(status_code=502, detail="Retrieved source has an invalid fetch date.") from error
         matches.append(
-            {"text": text, "metadata": metadata, "distance": float(distance)}
+            {
+                "text": text,
+                "metadata": {
+                    "source_id": result_source_id,
+                    "source_title": source_title,
+                    "source_url": source_url,
+                    "fetched_at": fetched_at.isoformat(),
+                    "section": section,
+                },
+                "distance": float(distance),
+            }
         )
     return matches
 

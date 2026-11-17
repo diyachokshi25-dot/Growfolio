@@ -7,14 +7,18 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
-import chromadb
+import psycopg
 import requests
 import yaml
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
+from pgvector import Vector
+
+from neon_store import VECTOR_TABLE, connect_neon
 
 
 ROOT = Path(__file__).parent
+ARTIFACT_ROOT = ROOT / "data" / "neon"
 load_dotenv(ROOT / ".env")
 with (ROOT / "config.yaml").open(encoding="utf-8") as file:
     CONFIG = yaml.safe_load(file)
@@ -254,28 +258,15 @@ def embed_chunks(chunks: list[dict[str, Any]]) -> tuple[list[list[float]], int]:
     return vectors, dimension
 
 
-def cloud_client():
-    required = ("CHROMA_API_KEY", "CHROMA_TENANT", "CHROMA_DATABASE")
-    missing = [name for name in required if not os.getenv(name)]
-    if missing:
-        raise RuntimeError(f"Set Chroma Cloud variables: {', '.join(missing)}.")
-    options: dict[str, str] = {
-        "api_key": os.environ["CHROMA_API_KEY"],
-        "tenant": os.environ["CHROMA_TENANT"],
-        "database": os.environ["CHROMA_DATABASE"],
-    }
-    if os.getenv("CHROMA_HOST"):
-        options["cloud_host"] = os.environ["CHROMA_HOST"]
-    return chromadb.CloudClient(**options)
-
-
 def main() -> None:
+    if CONFIG["deployment"]["vector_db"] != "neon_pgvector":
+        raise RuntimeError("The configured deployment vector database is not supported.")
     pages = scrape_pages()
-    write_json(ROOT / "data" / "01_raw" / "pages.json", pages)
+    write_json(ARTIFACT_ROOT / "01_raw" / "pages.json", pages)
     documents = load_documents(pages)
-    write_json(ROOT / "data" / "01_raw" / "loaded_documents.json", documents)
+    write_json(ARTIFACT_ROOT / "01_raw" / "loaded_documents.json", documents)
     write_json(
-        ROOT / "data" / "01_raw" / "load_manifest.json",
+        ARTIFACT_ROOT / "01_raw" / "load_manifest.json",
         {
             "validation_status": "passed",
             "loaded_at": date.today().isoformat(),
@@ -294,10 +285,16 @@ def main() -> None:
     chunks = chunk_pages(documents)
     if not chunks:
         raise RuntimeError("Chunking produced no records.")
-    write_json(ROOT / "data" / "02_chunks" / "chunks.json", chunks)
+    write_json(ARTIFACT_ROOT / "02_chunks" / "chunks.json", chunks)
     vectors, dimension = embed_chunks(chunks)
+    expected_dimension = CONFIG["deployment"]["embedding_dimensions"]
+    if dimension != expected_dimension:
+        raise RuntimeError(
+            f"Embedding dimension {dimension} does not match configured "
+            f"dimension {expected_dimension}."
+        )
     write_json(
-        ROOT / "data" / "03_embeddings" / "embeddings.json",
+        ARTIFACT_ROOT / "03_embeddings" / "embeddings.json",
         {
             "provider": "openai",
             "model": CONFIG["deployment"]["embedding_model"],
@@ -310,51 +307,83 @@ def main() -> None:
         },
     )
 
-    collection_name = CONFIG["deployment"]["collection_name"]
-    collection = cloud_client().get_or_create_collection(
-        name=collection_name,
-        embedding_function=None,
-        metadata={
-            "hnsw:space": "cosine",
-            "embedding_model": CONFIG["deployment"]["embedding_model"],
-        },
-    )
-    indexed_model = (collection.metadata or {}).get("embedding_model")
-    indexed_metadata = collection.metadata or {}
-    if (
-        indexed_model != CONFIG["deployment"]["embedding_model"]
-        or indexed_metadata.get("hnsw:space") != "cosine"
-    ):
-        raise RuntimeError(
-            "The existing collection uses incompatible embedding or distance "
-            "settings. Choose a new collection name before re-ingesting."
-        )
-    collection.upsert(
-        ids=[chunk["id"] for chunk in chunks],
-        documents=[chunk["text"] for chunk in chunks],
-        metadatas=[chunk["metadata"] for chunk in chunks],
-        embeddings=vectors,
-    )
-    current_ids = set(collection.get()["ids"])
-    stale_ids = current_ids.difference(chunk["id"] for chunk in chunks)
-    if stale_ids:
-        collection.delete(ids=sorted(stale_ids))
-    stored_count = collection.count()
-    if stored_count != len(chunks):
-        raise RuntimeError(
-            f"Chroma Cloud has {stored_count} records; expected {len(chunks)}."
-        )
-    sample = collection.query(
-        query_embeddings=[vectors[0]],
-        n_results=1,
-        include=["documents", "metadatas", "distances"],
-        where={"source_id": chunks[0]["metadata"]["source_id"]},
-    )
-    if not sample.get("ids") or not sample["ids"][0]:
-        raise RuntimeError("Chroma Cloud sample retrieval returned no records.")
-    sample_metadata = sample["metadatas"][0][0]
-    if sample_metadata.get("source_url") != chunks[0]["metadata"]["source_url"]:
-        raise RuntimeError("Chroma Cloud sample retrieval returned incorrect metadata.")
+    embedding_model = CONFIG["deployment"]["embedding_model"]
+    try:
+        with connect_neon(initialize_extension=True) as connection:
+            connection.execute(f"DROP TABLE IF EXISTS {VECTOR_TABLE}")
+            connection.execute(
+                f"""
+                CREATE TABLE {VECTOR_TABLE} (
+                    id TEXT PRIMARY KEY,
+                    source_id TEXT NOT NULL,
+                    source_title TEXT NOT NULL,
+                    source_url TEXT NOT NULL,
+                    fetched_at DATE NOT NULL,
+                    section TEXT NOT NULL,
+                    text TEXT NOT NULL,
+                    embedding_model TEXT NOT NULL,
+                    embedding vector({expected_dimension}) NOT NULL
+                )
+                """
+            )
+            connection.execute(
+                f"""
+                CREATE INDEX IF NOT EXISTS {VECTOR_TABLE}_embedding_hnsw_idx
+                ON {VECTOR_TABLE} USING hnsw (embedding vector_cosine_ops)
+                """
+            )
+            with connection.cursor() as cursor:
+                cursor.executemany(
+                    f"""
+                    INSERT INTO {VECTOR_TABLE} (
+                        id, source_id, source_title, source_url, fetched_at,
+                        section, text, embedding_model, embedding
+                    )
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    [
+                        (
+                            chunk["id"],
+                            chunk["metadata"]["source_id"],
+                            chunk["metadata"]["source_title"],
+                            chunk["metadata"]["source_url"],
+                            date.fromisoformat(chunk["metadata"]["fetched_at"]),
+                            chunk["metadata"]["section"],
+                            chunk["text"],
+                            embedding_model,
+                            Vector(vector),
+                        )
+                        for chunk, vector in zip(chunks, vectors)
+                    ],
+                )
+                cursor.execute(f"SELECT COUNT(*) FROM {VECTOR_TABLE}")
+                stored_count = cursor.fetchone()[0]
+                if stored_count != len(chunks):
+                    raise RuntimeError(
+                        f"Neon has {stored_count} records; expected {len(chunks)}."
+                    )
+                cursor.execute(
+                    f"""
+                    SELECT source_url
+                    FROM {VECTOR_TABLE}
+                    WHERE source_id = %s
+                    ORDER BY embedding <=> %s
+                    LIMIT 1
+                    """,
+                    (
+                        chunks[0]["metadata"]["source_id"],
+                        Vector(vectors[0]),
+                    ),
+                )
+                sample = cursor.fetchone()
+                if not sample:
+                    raise RuntimeError("Neon sample retrieval returned no records.")
+                if sample[0] != chunks[0]["metadata"]["source_url"]:
+                    raise RuntimeError(
+                        "Neon sample retrieval returned incorrect source metadata."
+                    )
+    except psycopg.Error as error:
+        raise RuntimeError("Neon pgvector indexing failed.") from error
 
     manifest = {
         "status": "complete",
@@ -363,15 +392,15 @@ def main() -> None:
         "embeddings": len(vectors),
         "embedding_model": CONFIG["deployment"]["embedding_model"],
         "embedding_dimension": dimension,
-        "vector_db": "Chroma Cloud",
-        "collection": collection_name,
+        "vector_db": CONFIG["deployment"]["vector_db"],
+        "table": VECTOR_TABLE,
         "stored_count": stored_count,
         "fetched_at": date.today().isoformat(),
     }
-    write_json(ROOT / "data" / "04_vector_db" / "manifest.json", manifest)
+    write_json(ARTIFACT_ROOT / "04_vector_db" / "manifest.json", manifest)
     print(
         f"Ingestion complete: {len(pages)} pages, {len(chunks)} chunks "
-        f"stored in Chroma Cloud collection '{collection_name}'."
+        f"stored in Neon table '{VECTOR_TABLE}'."
     )
 
 

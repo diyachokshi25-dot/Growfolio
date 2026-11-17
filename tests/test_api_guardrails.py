@@ -1,11 +1,12 @@
 import unittest
-from unittest.mock import Mock, patch
+from datetime import date
+from unittest.mock import MagicMock, Mock, patch
 
 import requests
 from fastapi import HTTPException
 from pydantic import ValidationError
 
-from app import AskRequest, blocked_reason, call_llm, refusal_source
+from app import AskRequest, CONFIG, blocked_reason, call_llm, refusal_source, retrieve
 
 
 class ApiGuardrailTests(unittest.TestCase):
@@ -105,6 +106,48 @@ class ApiGuardrailTests(unittest.TestCase):
 
     def test_fact_question_is_not_blocked(self) -> None:
         self.assertIsNone(blocked_reason("What is the expense ratio for HDFC Large Cap?"))
+
+    def test_neon_retrieval_filters_by_scheme_and_returns_source_metadata(self) -> None:
+        connection = MagicMock()
+        connection.__enter__.return_value = connection
+        cursor = connection.cursor.return_value.__enter__.return_value
+        cursor.fetchone.return_value = (1,)
+        cursor.fetchall.return_value = [
+            (
+                "Exit load details.",
+                "hdfc_large_cap",
+                "HDFC Large Cap Fund Direct Growth",
+                "https://groww.in/mutual-funds/hdfc-large-cap-fund-direct-growth",
+                date(2026, 1, 15),
+                "Exit load",
+                CONFIG["deployment"]["embedding_model"],
+                0.2,
+            )
+        ]
+        vector = [0.0] * CONFIG["deployment"]["embedding_dimensions"]
+        with patch("app.embed_query", return_value=vector):
+            with patch("app.neon_connection", return_value=connection):
+                matches = retrieve("What is the HDFC large cap exit load?")
+
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0]["metadata"]["source_id"], "hdfc_large_cap")
+        self.assertEqual(matches[0]["metadata"]["fetched_at"], "2026-01-15")
+        self.assertIn("WHERE source_id = %s", cursor.execute.call_args_list[1].args[0])
+        self.assertEqual(cursor.execute.call_args_list[1].args[1][1], "hdfc_large_cap")
+
+    def test_empty_neon_table_returns_setup_message(self) -> None:
+        connection = MagicMock()
+        connection.__enter__.return_value = connection
+        cursor = connection.cursor.return_value.__enter__.return_value
+        cursor.fetchone.return_value = (0,)
+        vector = [0.0] * CONFIG["deployment"]["embedding_dimensions"]
+        with patch("app.embed_query", return_value=vector):
+            with patch("app.neon_connection", return_value=connection):
+                with self.assertRaises(HTTPException) as raised:
+                    retrieve("What is the minimum SIP?")
+
+        self.assertEqual(raised.exception.status_code, 503)
+        self.assertIn("run ingest_neon.py", raised.exception.detail)
 
 
 if __name__ == "__main__":

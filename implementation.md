@@ -1,13 +1,14 @@
 # Vercel implementation plan
 
-This plan follows [architecture.md](./architecture.md). The deployed app uses FastAPI on Vercel, a static browser UI, OpenAI embeddings, and Chroma Cloud. Corpus ingestion is a separate local command; Vercel Functions never write to a local vector database.
+This plan follows [architecture.md](./architecture.md). The deployed app uses FastAPI on Vercel, a static browser UI, OpenAI embeddings, and Neon Postgres with pgvector. Corpus ingestion is a separate local command; Vercel Functions never write to a local vector database.
 
 ## 1. Project structure and configuration
 
 ```text
 app.py                    # FastAPI entrypoint; exports app
 public/index.html         # Static FAQ interface
-ingest_cloud.py           # Manual allowlisted ingestion
+ingest_neon.py            # Manual allowlisted ingestion
+neon_store.py             # Shared Neon connection and pgvector setup
 config.yaml               # Sources, chunking, retrieval, model and collection settings
 requirements.txt          # Vercel runtime dependencies
 requirements-streamlit.txt# Optional legacy local UI dependencies
@@ -25,7 +26,7 @@ Keep `.env`, `.venv/`, generated `data/`, caches, and API keys out of Git. Verce
 
 ## 2. Scraping documents
 
-`ingest_cloud.py` requests exactly the five URLs in `config.yaml`. It disables redirects, enforces response size and timeout limits, checks HTML content type, strips non-visible elements, and never fetches discovered links.
+`ingest_neon.py` requests exactly the five URLs in `config.yaml`. It disables redirects, enforces response size and timeout limits, checks HTML content type, strips non-visible elements, and never fetches discovered links.
 
 ### Check
 
@@ -34,7 +35,7 @@ Keep `.env`, `.venv/`, generated `data/`, caches, and API keys out of Git. Verce
 
 ## 3. Loading and validation
 
-The script writes raw pages to `data/01_raw/pages.json`, validates the exact source IDs and URLs, fetch status, HTML type, text, hashes, uniqueness, and fetch dates, then writes `loaded_documents.json` and `load_manifest.json`.
+The script writes raw pages to `data/neon/01_raw/pages.json`, validates the exact source IDs and URLs, fetch status, HTML type, text, hashes, uniqueness, and fetch dates, then writes the loaded documents and manifest under `data/neon/01_raw/`.
 
 ### Check
 
@@ -43,7 +44,7 @@ The script writes raw pages to `data/01_raw/pages.json`, validates the exact sou
 
 ## 4. Chunking
 
-The section-aware chunker preserves short fact labels with their values, keeps scheme chunks separate, and excludes performance/ranking sections. It saves stable chunk IDs and metadata to `data/02_chunks/chunks.json`.
+The section-aware chunker preserves short fact labels with their values, keeps scheme chunks separate, and excludes performance/ranking sections. It saves stable chunk IDs and metadata to `data/neon/02_chunks/chunks.json`.
 
 ### Check
 
@@ -52,28 +53,28 @@ The section-aware chunker preserves short fact labels with their values, keeps s
 
 ## 5. Embedding
 
-Ingestion and query retrieval both call OpenAI `text-embedding-3-small`. The script validates vector count, dimension, numeric values, and finite values, then saves the embedding stage artifact to `data/03_embeddings/embeddings.json`.
+Ingestion and query retrieval both call OpenAI `text-embedding-3-small`. The script validates vector count, dimension, numeric values, and finite values, then saves the embedding stage artifact to `data/neon/03_embeddings/embeddings.json`.
 
 ### Check
 
 - Vector count equals chunk count.
 - A model change requires re-ingestion before retrieval.
 
-## 6. Chroma Cloud storage
+## 6. Neon pgvector storage
 
-Ingestion uses `CHROMA_API_KEY`, `CHROMA_TENANT`, `CHROMA_DATABASE`, and optional `CHROMA_HOST`. It upserts stable chunk IDs into the configured collection, removes stale IDs, checks the stored count, performs a sample query, and writes the local vector manifest.
+Ingestion uses the Neon pooled connection string from `DATABASE_URL`. It enables pgvector, creates the configured-dimension `hdfc_chunks` table and cosine HNSW index, then replaces the indexed corpus inside one transaction. It checks the stored count, performs a sample query, and writes `data/neon/04_vector_db/manifest.json`. These artifacts are kept separate from the legacy Streamlit pipeline.
 
 ### Check
 
-- Chroma Cloud contains the complete current set of chunks.
+- Neon contains the complete current set of chunks and matching embedding-model metadata.
 - A sample query returns the expected source metadata.
-- Vercel uses the same collection and the same embedding model as ingestion.
+- Vercel and ingestion use the same Neon database and embedding model.
 
 ## 7. Retrieval, API, and UI
 
 1. `POST /api/answer` validates a question (1–500 characters); Groq is the only accepted answer provider.
 2. The API blocks likely PII, advice, performance, and unsupported statement-download questions before embeddings or LLM calls.
-3. It generates an OpenAI query embedding, filters by named scheme, and requests configured top-k results from Chroma Cloud.
+3. It generates an OpenAI query embedding, filters by named scheme, and requests configured top-k results from Neon using cosine distance.
 4. It validates metadata, source allowlist, fetch date, distance, and the maximum-distance threshold.
 5. It sends excerpts from only the cited source to Groq `openai/gpt-oss-20b`.
 6. It rejects overlong, URL-bearing, or performance-related generated text.
@@ -86,7 +87,7 @@ The static browser UI renders the result and disclaimer. It must not persist que
 - A named scheme is filtered to its approved page.
 - Weak retrieval does not call an LLM.
 - Each answer includes one source and `Last updated from sources:`.
-- Groq, embedding, and Chroma Cloud errors remain visible.
+- Groq, embedding, and Neon errors remain visible.
 
 ### UI design and interaction
 
@@ -113,15 +114,15 @@ The page summarizes five approved source pages, four HDFC scheme pages, and five
 | Statement-download question | Say the indexed pages do not contain the steps |
 | Unknown fact or low retrieval confidence | Unsupported response; no LLM guess |
 | Source outside allowlist or invalid date | Reject retrieved result |
-| Missing API key or Chroma Cloud configuration | Clear configuration error |
-| Provider/embedding/Chroma Cloud outage | Visible failure, not a fabricated answer |
+| Missing API key or Neon configuration | Clear configuration error |
+| Provider/embedding/Neon outage | Visible failure, not a fabricated answer |
 | Too many sentences, generated URL, or performance claim | Replace with safe fallback |
 
 ### Deployment checklist
 
-- Add `GROQ_API_KEY`, `OPENAI_API_KEY`, `CHROMA_API_KEY`, `CHROMA_TENANT`, and `CHROMA_DATABASE` as Vercel Secret variables. Add `CHROMA_HOST` only for a non-default region.
+- Add `GROQ_API_KEY`, `OPENAI_API_KEY`, and `DATABASE_URL` as Vercel Secret variables. Use Neon’s pooled connection string for `DATABASE_URL`.
 - Groq Free plan limits are organization-specific; daily request exhaustion displays “Limit for the day reached. Please try again after the daily quota resets.” Temporary rate limits display a retry-soon message. OpenAI remains required for embeddings and can incur separate API costs.
 - Select Production and any desired Preview environments.
-- Deploy, run `python ingest_cloud.py` locally with the same keys and collection, and verify the ingestion manifest.
+- Deploy, run `python ingest_neon.py` locally with the same `DATABASE_URL` and embedding key, and verify the ingestion manifest.
 - Configure Vercel Firewall rate limits before sharing the public URL; requests can incur API costs.
 - Never commit `.env` or paste secrets into chat or source code.
