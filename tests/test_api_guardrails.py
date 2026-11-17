@@ -6,7 +6,15 @@ import requests
 from fastapi import HTTPException
 from pydantic import ValidationError
 
-from app import AskRequest, CONFIG, blocked_reason, call_llm, refusal_source, retrieve
+from app import (
+    AskRequest,
+    CONFIG,
+    blocked_reason,
+    call_llm,
+    embed_query,
+    refusal_source,
+    retrieve,
+)
 
 
 class ApiGuardrailTests(unittest.TestCase):
@@ -88,6 +96,24 @@ class ApiGuardrailTests(unittest.TestCase):
                             )
                 self.assertEqual(raised.exception.status_code, 429)
                 self.assertEqual(raised.exception.detail, expected_detail)
+
+    def test_embedding_http_errors_are_logged_and_report_status_without_key(self) -> None:
+        for status_code in (401, 429):
+            with self.subTest(status_code=status_code):
+                response = Mock(status_code=status_code)
+                response.raise_for_status.side_effect = requests.HTTPError(
+                    response=response
+                )
+                with patch.dict("os.environ", {"OPENAI_API_KEY": "test-key"}):
+                    with patch("app.requests.post", return_value=response):
+                        with self.assertLogs("app", level="ERROR") as captured:
+                            with self.assertRaises(HTTPException) as raised:
+                                embed_query("What is the minimum SIP?")
+
+                self.assertEqual(raised.exception.status_code, 502)
+                self.assertIn(str(status_code), raised.exception.detail)
+                self.assertIn(str(status_code), "\n".join(captured.output))
+                self.assertNotIn("test-key", "\n".join(captured.output))
 
     def test_performance_questions_are_refused_and_use_amc_disclosure(self) -> None:
         question = "What are this fund's returns?"

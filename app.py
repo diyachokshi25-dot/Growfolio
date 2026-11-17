@@ -1,3 +1,4 @@
+import logging
 import math
 import os
 import re
@@ -28,6 +29,7 @@ SOURCE_ALLOWLIST = {source["id"]: source["url"] for source in SOURCES}
 Provider = Literal["groq"]
 
 app = FastAPI(title="HDFC Mutual Fund FAQ Assistant", version="1.0.0")
+logger = logging.getLogger(__name__)
 
 
 class AskRequest(BaseModel):
@@ -86,8 +88,40 @@ def embed_query(question: str) -> list[float]:
         )
         response.raise_for_status()
         vector = response.json()["data"][0]["embedding"]
+    except requests.HTTPError as error:
+        response = error.response
+        status_code = response.status_code if response is not None else None
+        logger.error("OpenAI embedding request failed with HTTP %s.", status_code)
+        if status_code in (401, 403):
+            detail = (
+                f"OpenAI rejected the API key or project access (HTTP {status_code}). "
+                "Check the key and project permissions."
+            )
+        elif status_code == 429:
+            detail = (
+                "OpenAI embedding quota or rate limit reached (HTTP 429). "
+                "Check API billing and usage."
+            )
+        elif status_code is not None:
+            detail = f"OpenAI embedding request failed with HTTP {status_code}."
+        else:
+            detail = "OpenAI embedding request failed."
+        raise HTTPException(status_code=502, detail=detail) from error
+    except requests.Timeout as error:
+        logger.error("OpenAI embedding request timed out.")
+        raise HTTPException(
+            status_code=502,
+            detail="OpenAI embedding request timed out. Please try again.",
+        ) from error
     except requests.RequestException as error:
-        raise HTTPException(status_code=502, detail="The embedding provider request failed.") from error
+        logger.error(
+            "OpenAI embedding transport failed (%s).",
+            type(error).__name__,
+        )
+        raise HTTPException(
+            status_code=502,
+            detail="Could not reach the OpenAI embedding service. Please try again.",
+        ) from error
     except (KeyError, IndexError, TypeError, ValueError) as error:
         raise HTTPException(status_code=502, detail="The embedding provider returned an invalid response.") from error
     if (
