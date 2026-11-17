@@ -33,3 +33,8 @@ Last updated from sources: 2026-11-17
 ### 8. Which fund should I buy?
 I can provide scheme facts, but not investment recommendations or advice. [Source](https://groww.in/mutual-funds/amc/hdfc-mutual-funds)  
 Last updated from sources: 2026-11-17
+
+### 9. Who is the current fund manager for HDFC Large Cap Fund?
+The page lists Rahul Baijal as the current fund manager. [Source](https://groww.in/mutual-funds/hdfc-large-cap-fund-direct-growth)
+
+Last updated from sources: 2026-11-17

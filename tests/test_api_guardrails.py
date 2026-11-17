@@ -140,6 +140,13 @@ class ApiGuardrailTests(unittest.TestCase):
             "https://groww.in/mutual-funds/amc/hdfc-mutual-funds",
         )
 
+    def test_manager_question_without_scheme_asks_for_clarification(self) -> None:
+        with patch("app.retrieve") as retrieve:
+            result = answer(AskRequest(question="Who are fund managers?"))
+
+        retrieve.assert_not_called()
+        self.assertIn("Which scheme", result["answer"])
+
     def test_retrieval_filters_by_scheme_and_returns_citation_metadata(self) -> None:
         query = {"exit": 0.8, "load": 0.6}
         index = {

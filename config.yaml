@@ -34,7 +34,7 @@ vector_db:
 
 retrieval:
   top_k: 4
-  max_distance: 0.9
+  max_distance: 0.8
 
 deployment:
   vector_store: bundled_index

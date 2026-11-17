@@ -22,6 +22,21 @@ class TfidfTests(unittest.TestCase):
 
         self.assertEqual(vectorize_query("unseenword", idf), {})
 
+    def test_plural_manager_query_matches_singular_source_term(self) -> None:
+        idf, vectors = fit_tfidf(
+            [
+                "Rahul Baijal is the current fund manager of HDFC Large Cap",
+                "HDFC Large Cap minimum SIP investment",
+            ]
+        )
+        query = vectorize_query("Who are fund managers?", idf)
+
+        self.assertIn("manager", query)
+        self.assertGreater(
+            cosine_similarity(query, vectors[0]),
+            cosine_similarity(query, vectors[1]),
+        )
+
     def test_empty_corpus_is_rejected(self) -> None:
         with self.assertRaisesRegex(ValueError, "at least one document"):
             fit_tfidf([])

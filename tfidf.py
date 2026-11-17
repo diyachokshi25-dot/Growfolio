@@ -32,11 +32,12 @@ _STOP_WORDS = frozenset(
         "with",
     }
 )
+_TOKEN_NORMALIZATION = {"managers": "manager"}
 
 
 def tokenize(text: str) -> list[str]:
     return [
-        token
+        _TOKEN_NORMALIZATION.get(token, token)
         for token in _TOKEN_PATTERN.findall(text.lower())
         if token not in _STOP_WORDS
     ]

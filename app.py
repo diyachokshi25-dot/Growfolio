@@ -285,6 +285,12 @@ def answer(request: AskRequest) -> dict[str, str]:
             SOURCES[0]["url"],
             "Not available (source not fetched)",
         )
+    if re.search(r"\bmanagers?\b", question, re.I) and target_source(question) is None:
+        return result_payload(
+            "Which scheme’s fund manager do you mean: HDFC Large Cap, Flexi Cap, ELSS, or Mid Cap?",
+            SOURCES[0]["url"],
+            "Not available (source not fetched)",
+        )
 
     matches = retrieve(question)
     fallback_url = matches[0]["metadata"]["source_url"] if matches else SOURCES[0]["url"]
