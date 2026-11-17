@@ -475,33 +475,9 @@
 
       .form-row {
         display: grid;
-        grid-template-columns: minmax(170px, .7fr) 1fr;
+        grid-template-columns: 1fr;
         align-items: end;
         gap: 12px;
-      }
-
-      .field-group { min-width: 0; }
-
-      .fixed-model {
-        display: flex;
-        min-height: 46px;
-        flex-direction: column;
-        justify-content: center;
-        gap: 2px;
-        padding: 5px 12px;
-        border: 1px solid #c9d7e4;
-        border-radius: 10px;
-        background: #fff;
-      }
-
-      .fixed-model strong {
-        color: #33475b;
-        font-size: 11px;
-      }
-
-      .fixed-model small {
-        color: var(--muted);
-        font-size: 9px;
       }
 
       .ask-button {
@@ -921,16 +897,16 @@
               <span class="eyebrow">The question desk</span>
               <h2 id="assistant-heading">Ask the HDFC fund archive</h2>
             </div>
-            <p>Ask one factual question at a time. Every response includes one source link and its source date.</p>
+            <p>Ask naturally, in your own words. Name the scheme when it matters; answers include a source link and date.</p>
           </div>
           <div class="assistant-card">
             <div class="assistant-main">
               <span class="card-kicker"><span class="stamp" aria-hidden="true">✦</span> Verified-source assistant</span>
               <h3 class="assistant-title">What would you like to know?</h3>
-              <p class="assistant-subtitle">Expense ratio, exit load, minimum SIP, lock-in, riskometer, benchmark, and more from the indexed pages.</p>
+              <p class="assistant-subtitle">Ask about expense ratio, exit load, minimum SIP, lock-in, riskometer, benchmark, fund managers, and other facts on these pages.</p>
               <form id="question-form">
                 <label for="question">Your question</label>
-                <textarea id="question" name="question" maxlength="500" required placeholder="Example: What is the exit load for HDFC Mid Cap Fund?"></textarea>
+                <textarea id="question" name="question" maxlength="500" required placeholder="Example: I’m looking at HDFC Large Cap. Who manages this fund?"></textarea>
                 <div class="quick-questions" aria-label="Example questions">
                   <button class="quick-question" type="button" data-question="What is the expense ratio for HDFC Large Cap Fund?">Expense ratio</button>
                   <button class="quick-question" type="button" data-question="What is the exit load for HDFC Mid Cap Fund?">Exit load</button>
@@ -939,13 +915,6 @@
                   <button class="quick-question" type="button" data-question="What is the riskometer for HDFC Mid Cap Fund?">Riskometer</button>
                 </div>
                 <div class="form-row">
-                  <div class="field-group">
-                    <label id="answer-model-label">Answer model</label>
-                    <div class="fixed-model" role="group" aria-labelledby="answer-model-label">
-                      <strong>Groq · GPT-OSS 20B</strong>
-                      <small>Free plan · usage limits apply</small>
-                    </div>
-                  </div>
                   <button class="ask-button" id="submit" type="submit">
                     <span>Ask the archive</span><span class="arrow" aria-hidden="true">→</span>
                   </button>
@@ -965,7 +934,7 @@
             <aside class="assistant-aside" aria-label="Privacy reminder">
               <span class="aside-stamp" aria-hidden="true">Diana's<br>garden<br>archive</span>
               <p class="aside-copy">A small guide to the facts.<em>Con cura</em></p>
-              <p class="privacy-note">Groq Free plan limits apply. Don’t enter PAN, Aadhaar, account numbers, OTPs, phone numbers, or email addresses.</p>
+              <p class="privacy-note">Facts only, no investment advice. Don’t enter PAN, Aadhaar, account numbers, OTPs, phone numbers, or email addresses.</p>
             </aside>
           </div>
         </section>
