@@ -30,12 +30,13 @@ The API health check is `/api/health`. If Vercel environment variables change, r
 
 ## Local options
 
-- Run the Vercel-compatible API locally with `uvicorn app:app --reload`; it serves the API. Open `public/index.html` separately or use `vercel dev` to test the Vercel routing and static UI together.
+- Run only the API locally with `uvicorn app:app --reload`; it does not serve the browser UI. For a full local UI-and-API test, run `vercel dev` from the repository root and open its URL. Do not open `public/index.html` directly, because its relative API requests need to use the same origin.
 - The previous Streamlit prototype remains in `streamlit_app.py`. To run it locally, install `requirements-streamlit.txt`, set its configured local embedding model and `GROQ_API_KEY`, then run `streamlit run streamlit_app.py`. Its ChromaDB index is separate from the bundled Vercel index.
 
 ## Scope and limits
 
 - Only the five URLs in `config.yaml` are scraped; links found on those pages are not followed.
+- Scheme-specific answers are limited to HDFC Large Cap, Flexi Cap, ELSS, and Mid Cap. Other HDFC scheme questions are refused even if the AMC overview contains summary text about them.
 - Ingestion and retrieval use the same local TF-IDF vocabulary and sparse vectors. This lexical method is lightweight and deterministic, but less semantic than a neural embedding model. Regenerate and deploy `deployment_index.py` whenever the corpus or vectorization changes.
 - Groq `openai/gpt-oss-20b` is the sole answer model. Groq Free plan model availability and limits are account-specific.
 - Vercel reads the bundled, read-only `deployment_index.py`; there is no hosted database, database credential, model download, or external vector service.

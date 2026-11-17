@@ -7,6 +7,7 @@ from pydantic import ValidationError
 
 from app import (
     AskRequest,
+    answer,
     blocked_reason,
     call_llm,
     embed_query,
@@ -124,6 +125,20 @@ class ApiGuardrailTests(unittest.TestCase):
 
     def test_fact_question_is_not_blocked(self) -> None:
         self.assertIsNone(blocked_reason("What is the expense ratio for HDFC Large Cap?"))
+
+    def test_out_of_scope_hdfc_scheme_is_refused_before_retrieval(self) -> None:
+        request = AskRequest(
+            question="What is the minimum SIP for HDFC Small Cap Fund?"
+        )
+        with patch("app.retrieve") as retrieve:
+            result = answer(request)
+
+        retrieve.assert_not_called()
+        self.assertIn("covers HDFC Large Cap, Flexi Cap, ELSS, and Mid Cap", result["answer"])
+        self.assertEqual(
+            result["source_url"],
+            "https://groww.in/mutual-funds/amc/hdfc-mutual-funds",
+        )
 
     def test_retrieval_filters_by_scheme_and_returns_citation_metadata(self) -> None:
         query = {"exit": 0.8, "load": 0.6}

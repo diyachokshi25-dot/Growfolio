@@ -161,6 +161,13 @@ def target_source(question: str) -> str | None:
     return None
 
 
+def is_out_of_scope_hdfc_question(question: str) -> bool:
+    return (
+        target_source(question) is None
+        and bool(re.search(r"\bhdfc\b", question, re.I))
+    )
+
+
 def retrieve(question: str) -> list[dict]:
     top_k = CONFIG["retrieval"]["top_k"]
     if type(top_k) is not int or top_k < 1:
@@ -269,6 +276,12 @@ def answer(request: AskRequest) -> dict[str, str]:
     if re.search(r"\b(statement|download)\b", question, re.I):
         return result_payload(
             "The five indexed pages do not explain how to download statements, so I can’t confirm the steps.",
+            SOURCES[0]["url"],
+            "Not available (source not fetched)",
+        )
+    if is_out_of_scope_hdfc_question(question):
+        return result_payload(
+            "This prototype covers HDFC Large Cap, Flexi Cap, ELSS, and Mid Cap only. I can’t verify facts about other schemes.",
             SOURCES[0]["url"],
             "Not available (source not fetched)",
         )
