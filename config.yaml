@@ -37,10 +37,9 @@ retrieval:
   max_distance: 0.9
 
 deployment:
-  vector_db: neon_pgvector
-  embedding_provider: fastembed
-  embedding_model: BAAI/bge-small-en-v1.5
-  embedding_dimensions: 384
+  vector_store: bundled_index
+  embedding_provider: tfidf
+  embedding_model: tfidf-v1
 
 llm:
   providers:

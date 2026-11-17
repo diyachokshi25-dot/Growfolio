@@ -1,6 +1,5 @@
 import unittest
-from datetime import date
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import requests
 from fastapi import HTTPException
@@ -8,10 +7,10 @@ from pydantic import ValidationError
 
 from app import (
     AskRequest,
-    CONFIG,
     blocked_reason,
     call_llm,
     embed_query,
+    load_index,
     refusal_source,
     retrieve,
 )
@@ -97,16 +96,15 @@ class ApiGuardrailTests(unittest.TestCase):
                 self.assertEqual(raised.exception.status_code, 429)
                 self.assertEqual(raised.exception.detail, expected_detail)
 
-    def test_fastembed_query_embedding_does_not_require_openai_key(self) -> None:
-        vector = [0.25] * CONFIG["deployment"]["embedding_dimensions"]
-        with patch.dict("os.environ", {"OPENAI_API_KEY": ""}):
-            with patch("app.embed_local_query", return_value=vector) as embed:
-                result = embed_query("What is the minimum SIP?")
+    def test_query_vector_uses_the_bundled_idf_vocabulary(self) -> None:
+        index = {"idf": {"minimum": 1.5, "sip": 1.2}}
+        with patch("app.load_index", return_value=index):
+            vector = embed_query("What is the minimum SIP?")
 
-        self.assertEqual(result, vector)
-        embed.assert_called_once_with(
-            CONFIG["deployment"]["embedding_model"],
-            "What is the minimum SIP?",
+        self.assertEqual(set(vector), {"minimum", "sip"})
+        self.assertAlmostEqual(
+            sum(weight * weight for weight in vector.values()),
+            1.0,
         )
 
     def test_performance_questions_are_refused_and_use_amc_disclosure(self) -> None:
@@ -127,59 +125,65 @@ class ApiGuardrailTests(unittest.TestCase):
     def test_fact_question_is_not_blocked(self) -> None:
         self.assertIsNone(blocked_reason("What is the expense ratio for HDFC Large Cap?"))
 
-    def test_neon_retrieval_filters_by_scheme_and_returns_source_metadata(self) -> None:
-        connection = MagicMock()
-        connection.__enter__.return_value = connection
-        cursor = connection.cursor.return_value.__enter__.return_value
-        cursor.fetchone.return_value = (1,)
-        cursor.fetchall.return_value = [
-            (
-                "Exit load details.",
-                "hdfc_large_cap",
-                "HDFC Large Cap Fund Direct Growth",
-                "https://groww.in/mutual-funds/hdfc-large-cap-fund-direct-growth",
-                date(2026, 1, 15),
-                "Exit load",
-                CONFIG["deployment"]["embedding_model"],
-                0.2,
-            )
-        ]
-        vector = [0.0] * CONFIG["deployment"]["embedding_dimensions"]
-        with patch.dict("os.environ", {"DATABASE_URL": "postgresql://test"}):
-            with patch("app.embed_query", return_value=vector):
-                with patch("app.neon_connection", return_value=connection):
-                    matches = retrieve("What is the HDFC large cap exit load?")
+    def test_retrieval_filters_by_scheme_and_returns_citation_metadata(self) -> None:
+        query = {"exit": 0.8, "load": 0.6}
+        index = {
+            "items": [
+                {
+                    "text": "Exit load details.",
+                    "metadata": {
+                        "source_id": "hdfc_large_cap",
+                        "source_title": "HDFC Large Cap Fund Direct Growth",
+                        "source_url": "https://groww.in/mutual-funds/hdfc-large-cap-fund-direct-growth",
+                        "fetched_at": "2026-01-15",
+                        "section": "Exit load",
+                    },
+                    "vector": query,
+                },
+                {
+                    "text": "Minimum SIP details.",
+                    "metadata": {
+                        "source_id": "hdfc_flexi_cap",
+                        "source_title": "HDFC Flexi Cap Direct Plan Growth",
+                        "source_url": "https://groww.in/mutual-funds/hdfc-equity-fund-direct-growth",
+                        "fetched_at": "2026-01-15",
+                        "section": "Minimum SIP",
+                    },
+                    "vector": {"minimum": 1.0},
+                },
+            ]
+        }
+        with patch("app.embed_query", return_value=query):
+            with patch("app.load_index", return_value=index):
+                matches = retrieve("What is the HDFC large cap exit load?")
 
         self.assertEqual(len(matches), 1)
         self.assertEqual(matches[0]["metadata"]["source_id"], "hdfc_large_cap")
         self.assertEqual(matches[0]["metadata"]["fetched_at"], "2026-01-15")
-        self.assertIn("WHERE source_id = %s", cursor.execute.call_args_list[1].args[0])
-        self.assertEqual(cursor.execute.call_args_list[1].args[1][1], "hdfc_large_cap")
+        self.assertEqual(matches[0]["metadata"]["source_url"], index["items"][0]["metadata"]["source_url"])
 
-    def test_empty_neon_table_returns_setup_message(self) -> None:
-        connection = MagicMock()
-        connection.__enter__.return_value = connection
-        cursor = connection.cursor.return_value.__enter__.return_value
-        cursor.fetchone.return_value = (0,)
-        vector = [0.0] * CONFIG["deployment"]["embedding_dimensions"]
-        with patch.dict("os.environ", {"DATABASE_URL": "postgresql://test"}):
-            with patch("app.embed_query", return_value=vector):
-                with patch("app.neon_connection", return_value=connection):
-                    with self.assertRaises(HTTPException) as raised:
-                        retrieve("What is the minimum SIP?")
+    def test_empty_query_vector_returns_no_matches(self) -> None:
+        with patch("app.embed_query", return_value={}):
+            matches = retrieve("What is this unrelated fact?")
 
-        self.assertEqual(raised.exception.status_code, 503)
-        self.assertIn("run ingest_neon.py", raised.exception.detail)
+        self.assertEqual(matches, [])
 
-    def test_missing_database_url_fails_before_loading_embedding_model(self) -> None:
-        with patch.dict("os.environ", {"DATABASE_URL": ""}):
-            with patch("app.embed_query") as embed:
-                with self.assertRaises(HTTPException) as raised:
-                    retrieve("What is the minimum SIP?")
+    def test_invalid_bundled_index_returns_setup_message(self) -> None:
+        load_index.cache_clear()
+        self.addCleanup(load_index.cache_clear)
+        invalid_index = {
+            "provider": "bundled_index",
+            "embedding_model": "tfidf-v1",
+            "idf": {},
+            "items": [],
+            "count": 0,
+        }
+        with patch("app.INDEX", invalid_index):
+            with self.assertRaises(HTTPException) as raised:
+                load_index()
 
         self.assertEqual(raised.exception.status_code, 503)
-        self.assertEqual(raised.exception.detail, "DATABASE_URL is not configured.")
-        embed.assert_not_called()
+        self.assertIn("run python ingest.py", raised.exception.detail)
 
 
 if __name__ == "__main__":

@@ -1,15 +1,15 @@
 # Vercel implementation plan
 
-This plan follows [architecture.md](./architecture.md). The deployed app uses FastAPI on Vercel, a static browser UI, local FastEmbed embeddings, and Neon Postgres with pgvector. Corpus ingestion is a separate local command; Vercel Functions never write to a local vector database.
+This plan follows [architecture.md](./architecture.md). The deployed app uses FastAPI on Vercel, a static browser UI, Groq for answers, and a bundled sparse TF-IDF index. Corpus ingestion is a separate local command; no hosted database or model download is needed at runtime.
 
 ## 1. Project structure and configuration
 
 ```text
 app.py                    # FastAPI entrypoint; exports app
 public/index.html         # Static FAQ interface
-ingest_neon.py            # Manual allowlisted ingestion
-neon_store.py             # Shared Neon connection and pgvector setup
-local_embeddings.py       # Cached FastEmbed ONNX model and local inference helpers
+ingest.py                 # Manual allowlisted ingestion and index generation
+tfidf.py                  # Shared sparse vectorization and cosine helpers
+deployment_index.py       # Generated corpus index included in Vercel deployment
 config.yaml               # Sources, chunking, retrieval, model and collection settings
 requirements.txt          # Vercel runtime dependencies
 requirements-streamlit.txt# Optional legacy local UI dependencies
@@ -27,7 +27,7 @@ Keep `.env`, `.venv/`, generated `data/`, caches, and API keys out of Git. Verce
 
 ## 2. Scraping documents
 
-`ingest_neon.py` requests exactly the five URLs in `config.yaml`. It disables redirects, enforces response size and timeout limits, checks HTML content type, strips non-visible elements, and never fetches discovered links.
+`ingest.py` requests exactly the five URLs in `config.yaml`. It disables redirects, enforces response size and timeout limits, checks HTML content type, strips non-visible elements, and never fetches discovered links.
 
 ### Check
 
@@ -36,7 +36,7 @@ Keep `.env`, `.venv/`, generated `data/`, caches, and API keys out of Git. Verce
 
 ## 3. Loading and validation
 
-The script writes raw pages to `data/neon/01_raw/pages.json`, validates the exact source IDs and URLs, fetch status, HTML type, text, hashes, uniqueness, and fetch dates, then writes the loaded documents and manifest under `data/neon/01_raw/`.
+The script writes raw pages to `data/pipeline/01_raw/pages.json`, validates the exact source IDs and URLs, fetch status, HTML type, text, hashes, uniqueness, and fetch dates, then writes the loaded documents and manifest under `data/pipeline/01_raw/`.
 
 ### Check
 
@@ -45,7 +45,7 @@ The script writes raw pages to `data/neon/01_raw/pages.json`, validates the exac
 
 ## 4. Chunking
 
-The section-aware chunker preserves short fact labels with their values, keeps scheme chunks separate, and excludes performance/ranking sections. It saves stable chunk IDs and metadata to `data/neon/02_chunks/chunks.json`.
+The section-aware chunker preserves short fact labels with their values, keeps scheme chunks separate, and excludes performance/ranking sections. It saves stable chunk IDs and metadata to `data/pipeline/02_chunks/chunks.json`.
 
 ### Check
 
@@ -54,28 +54,28 @@ The section-aware chunker preserves short fact labels with their values, keeps s
 
 ## 5. Embedding
 
-Ingestion uses FastEmbed `passage_embed`; query retrieval uses `query_embed` from the same `BAAI/bge-small-en-v1.5` model. The first run downloads the public ONNX model into a temporary cache. The script validates vector count, dimension, numeric values, and finite values, then saves the embedding stage artifact to `data/neon/03_embeddings/embeddings.json`.
+Ingestion and query retrieval use the same local TF-IDF vocabulary and IDF weights. The vectorizer uses only the Python standard library, so it requires no model download or embedding API. The script saves sparse vectors keyed by chunk ID to `data/pipeline/03_embeddings/embeddings.json`.
 
 ### Check
 
 - Vector count equals chunk count.
 - A model change requires re-ingestion before retrieval.
 
-## 6. Neon pgvector storage
+## 6. Bundled index
 
-Ingestion uses the Neon pooled connection string from `DATABASE_URL`. It enables pgvector, creates the configured-dimension `hdfc_chunks` table and cosine HNSW index, then replaces the indexed corpus inside one transaction. It checks the stored count, performs a sample query, and writes `data/neon/04_vector_db/manifest.json`. These artifacts are kept separate from the legacy Streamlit pipeline.
+Ingestion packages sparse vectors and source metadata into `deployment_index.py` and writes an inspectable copy to `data/pipeline/04_vector_index/index.json`. It also writes an index manifest. The generated module is committed with the application so Vercel can import the corpus directly; no database URL is required.
 
 ### Check
 
-- Neon contains the complete current set of chunks and matching embedding-model metadata.
-- A sample query returns the expected source metadata.
-- Vercel and ingestion use the same Neon database and embedding model.
+- The index contains every chunk and the metadata from its approved source.
+- A sample query ranks the expected scheme and fact section first.
+- The generated module is included in the Vercel deployment.
 
 ## 7. Retrieval, API, and UI
 
 1. `POST /api/answer` validates a question (1–500 characters); Groq is the only accepted answer provider.
 2. The API blocks likely PII, advice, performance, and unsupported statement-download questions before embeddings or LLM calls.
-3. It generates a local FastEmbed query embedding, filters by named scheme, and requests configured top-k results from Neon using cosine distance.
+3. It generates a query vector from the bundled TF-IDF vocabulary, filters by named scheme, and ranks the bundled vectors using cosine similarity.
 4. It validates metadata, source allowlist, fetch date, distance, and the maximum-distance threshold.
 5. It sends excerpts from only the cited source to Groq `openai/gpt-oss-20b`.
 6. It rejects overlong, URL-bearing, or performance-related generated text.
@@ -88,7 +88,7 @@ The static browser UI renders the result and disclaimer. It must not persist que
 - A named scheme is filtered to its approved page.
 - Weak retrieval does not call an LLM.
 - Each answer includes one source and `Last updated from sources:`.
-- Groq, embedding, and Neon errors remain visible.
+- Groq and index errors remain visible.
 
 ### UI design and interaction
 
@@ -115,15 +115,15 @@ The page summarizes five approved source pages, four HDFC scheme pages, and five
 | Statement-download question | Say the indexed pages do not contain the steps |
 | Unknown fact or low retrieval confidence | Unsupported response; no LLM guess |
 | Source outside allowlist or invalid date | Reject retrieved result |
-| Missing Groq key or Neon configuration | Clear configuration error |
-| Groq, model download, or Neon failure | Visible failure, not a fabricated answer |
+| Missing Groq key or invalid bundled index | Clear configuration error |
+| Groq failure | Visible failure, not a fabricated answer |
 | Too many sentences, generated URL, or performance claim | Replace with safe fallback |
 
 ### Deployment checklist
 
-- Add `GROQ_API_KEY` and `DATABASE_URL` as Vercel Secret variables. Use Neon’s pooled connection string for `DATABASE_URL`; no embedding API key is required.
-- Groq Free plan limits are organization-specific; daily request exhaustion displays “Limit for the day reached. Please try again after the daily quota resets.” Temporary rate limits display a retry-soon message. FastEmbed runs locally, though its first cold start downloads model weights and uses Vercel compute.
+- Add `GROQ_API_KEY` as a Vercel Secret variable. No database or embedding key is required.
+- Groq Free plan limits are organization-specific; daily request exhaustion displays “Limit for the day reached. Please try again after the daily quota resets.” Temporary rate limits display a retry-soon message.
 - Select Production and any desired Preview environments.
-- Deploy, run `python ingest_neon.py` locally with the same `DATABASE_URL`, and verify the ingestion manifest.
+- Run `python ingest.py`, commit the generated `deployment_index.py`, deploy, and verify a factual answer and its citation.
 - Configure Vercel Firewall rate limits before sharing the public URL; requests can incur API costs.
 - Never commit `.env` or paste secrets into chat or source code.

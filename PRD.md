@@ -113,16 +113,16 @@ Opinionated or portfolio questions (for example, “Should I buy or sell?”) re
 
 ### FR-3: Embeddings
 
-- Deployment embedding model: FastEmbed `BAAI/bge-small-en-v1.5` (384 dimensions), run locally with ONNX. The legacy Streamlit prototype may use its configured Sentence Transformers model separately.
-- Make the embedding provider/model configurable.
-- Use the exact same configured embedding model for ingestion and query-time retrieval.
-- Persist embeddings and their chunk identifiers for inspection.
+- Deployment vectorization: local sparse TF-IDF vectors using Python's standard library. The legacy Streamlit prototype may use its configured Sentence Transformers model separately.
+- Keep the vectorization provider/model configurable.
+- Use the same generated vocabulary and IDF weights for ingestion and query-time retrieval.
+- Persist vectors and their chunk identifiers for inspection.
 
-### FR-4: Vector database and retrieval
+### FR-4: Bundled vector index and retrieval
 
-- Use Neon Postgres with pgvector for the deployed prototype.
-- Configure vector-store provider and embedding dimension centrally; keep the Neon connection string in `DATABASE_URL`.
-- Retrieve the most relevant chunks from the same configured vector store used during ingestion.
+- Bundle the small corpus index with the deployed prototype instead of requiring a hosted database.
+- Configure vector-store and vectorization providers centrally.
+- Retrieve the most relevant chunks from the same generated index used during ingestion.
 - Keep source metadata attached to each retrieved result and use it to create citations.
 - If retrieval is weak or no relevant evidence is found, return an unsupported response.
 
@@ -131,7 +131,7 @@ Opinionated or portfolio questions (for example, “Should I buy or sell?”) re
 - Use Groq GPT-OSS 20B (`openai/gpt-oss-20b`) as the only answer-generation model.
 - Read `GROQ_API_KEY` from environment configuration (for example, `.env` or Vercel Secret variables); never commit secrets.
 - Keep the Groq model identifier in central configuration and surface API/configuration errors to the user.
-- FastEmbed runs locally for embeddings and does not require an external embedding API key or per-request API charge.
+- TF-IDF vectors are generated locally and do not require an embedding API key, model download, or per-request embedding charge.
 - Document that Groq Free plan limits vary by organization and that provider rate limits are surfaced clearly.
 - Do not persist prompts, questions, answers, or provider credentials.
 
@@ -156,17 +156,17 @@ Opinionated or portfolio questions (for example, “Should I buy or sell?”) re
 
 The prototype must make each stage inspectable:
 
-1. **Data loading:** `data/neon/01_raw/` — fetched text and source metadata.
-2. **Chunking:** `data/neon/02_chunks/` — chunks with source, scheme, section, and date metadata.
-3. **Embedding:** `data/neon/03_embeddings/` — embedding model identifier and vectors keyed by chunk ID.
-4. **Vector database:** `data/neon/04_vector_db/` — ingestion manifest for the remote Neon pgvector table.
+1. **Data loading:** `data/pipeline/01_raw/` — fetched text and source metadata.
+2. **Chunking:** `data/pipeline/02_chunks/` — chunks with source, scheme, section, and date metadata.
+3. **Embedding:** `data/pipeline/03_embeddings/` — vectorization model identifier and sparse vectors keyed by chunk ID.
+4. **Vector index:** `data/pipeline/04_vector_index/` — bundled search index and manifest; `deployment_index.py` is committed for Vercel.
 5. **Retrieval:** show retrieved excerpts and their source metadata in a demo/debug view without exposing secrets or user PII.
 
-Re-ingestion must refresh the artifacts from the allowlisted pages and use the same model/backend configuration for later retrieval.
+Re-ingestion must refresh the artifacts from the allowlisted pages and use the same vectorization/index configuration for later retrieval.
 
 ## 9. Configuration and privacy requirements
 
-- Central configuration must hold the source allowlist, chunking options, embedding provider/model, vector DB provider/dimension, retrieval parameters, and Groq answer model. The Neon connection string is an environment secret.
+- Central configuration must hold the source allowlist, chunking options, vectorization provider/model, vector-store provider, retrieval parameters, and Groq answer model. No database connection string is required.
 - API keys must be read from the local environment and excluded from source control and generated data artifacts.
 - No question or answer history is required for the prototype.
 - Any debug display must contain corpus passages only, not secrets or personal query content.
@@ -183,7 +183,7 @@ Re-ingestion must refresh the artifacts from the allowlisted pages and use the s
 ## 11. Acceptance criteria
 
 1. The loader makes requests only to the five initial allowlisted pages and never follows page links.
-2. Loading, chunking, embedding, and pgvector indexing outputs are separately persisted and inspectable.
+2. Loading, chunking, vectorization, and bundled index outputs are separately persisted and inspectable.
 3. The embedding model identifier used at query time matches the ingestion model.
 4. The UI displays a welcome message, three example questions, and the facts-only disclaimer.
 5. A supported factual answer is at most three sentences and contains one relevant source link and the required update line.
@@ -199,7 +199,7 @@ Re-ingestion must refresh the artifacts from the allowlisted pages and use the s
 1. **Data loading:** implement allowlisted fetch and raw data persistence.
 2. **Data chunking:** select and document section-aware chunk boundaries; persist chunks and metadata.
 3. **Data embedding:** embed chunks with the configured model and persist vectors.
-4. **Vector database:** write vectors and metadata to the configured Neon pgvector table.
+4. **Vector index:** bundle vectors and metadata in the generated deployment index.
 5. **Retrieval and answer:** retrieve relevant chunks, classify/refuse unsafe or unsupported requests, and generate cited factual responses.
 6. **UI and handoff:** add examples, disclaimer, sample Q&A, README, source list, and a short demo or local run instructions.
 

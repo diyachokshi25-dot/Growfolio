@@ -2,20 +2,19 @@ import math
 import os
 import re
 from datetime import date
+from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-import psycopg
 import requests
 import yaml
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
-from pgvector import Vector
 from pydantic import BaseModel, Field
 
-from local_embeddings import embed_query as embed_local_query
-from neon_store import VECTOR_TABLE, connect_neon
+from deployment_index import INDEX
 from rate_limits import groq_rate_limit_message
+from tfidf import cosine_similarity, vectorize_query
 
 
 ROOT = Path(__file__).parent
@@ -71,46 +70,82 @@ def refusal_source(question: str) -> str:
     return SOURCES[0]["url"]
 
 
-def embed_query(question: str) -> list[float]:
-    if CONFIG["deployment"]["embedding_provider"] != "fastembed":
+@lru_cache(maxsize=1)
+def load_index() -> dict:
+    index = INDEX
+    expected_model = CONFIG["deployment"]["embedding_model"]
+    if (
+        not isinstance(index, dict)
+        or index.get("provider") != "bundled_index"
+        or index.get("embedding_model") != expected_model
+        or not isinstance(index.get("idf"), dict)
+        or not isinstance(index.get("items"), list)
+        or not index["items"]
+        or index.get("count") != len(index["items"])
+    ):
+        raise HTTPException(
+            status_code=503,
+            detail="The bundled search index is invalid; run python ingest.py and deploy the generated index.",
+        )
+
+    idf = index["idf"]
+    if not idf or any(
+        not isinstance(term, str)
+        or not isinstance(weight, (int, float))
+        or not math.isfinite(weight)
+        or weight <= 0
+        for term, weight in idf.items()
+    ):
+        raise HTTPException(
+            status_code=503,
+            detail="The bundled search index has invalid term weights; regenerate it with python ingest.py.",
+        )
+
+    for item in index["items"]:
+        metadata = item.get("metadata") if isinstance(item, dict) else None
+        vector = item.get("vector") if isinstance(item, dict) else None
+        if (
+            not isinstance(item, dict)
+            or not isinstance(item.get("text"), str)
+            or not item["text"].strip()
+            or not isinstance(metadata, dict)
+            or metadata.get("source_id") not in SOURCE_ALLOWLIST
+            or metadata.get("source_url") != SOURCE_ALLOWLIST.get(metadata.get("source_id"))
+            or not isinstance(metadata.get("source_title"), str)
+            or not isinstance(metadata.get("section"), str)
+            or not isinstance(metadata.get("fetched_at"), str)
+            or not isinstance(vector, dict)
+            or any(
+                token not in idf
+                or not isinstance(weight, (int, float))
+                or not math.isfinite(weight)
+                for token, weight in vector.items()
+            )
+        ):
+            raise HTTPException(
+                status_code=503,
+                detail="The bundled search index contains an invalid record; regenerate it with python ingest.py.",
+            )
+        try:
+            date.fromisoformat(metadata["fetched_at"])
+        except ValueError as error:
+            raise HTTPException(
+                status_code=503,
+                detail="The bundled search index contains an invalid fetch date.",
+            ) from error
+    return index
+
+
+def embed_query(question: str) -> dict[str, float]:
+    if CONFIG["deployment"]["embedding_provider"] != "tfidf":
         raise HTTPException(
             status_code=500,
             detail="The configured deployment embedding provider is not supported.",
         )
-    vector = embed_local_query(CONFIG["deployment"]["embedding_model"], question)
-    if (
-        not isinstance(vector, list)
-        or not vector
-        or any(not isinstance(value, (int, float)) or not math.isfinite(value) for value in vector)
-    ):
-        raise HTTPException(status_code=502, detail="The embedding provider returned an invalid vector.")
-    if len(vector) != CONFIG["deployment"]["embedding_dimensions"]:
-        raise HTTPException(
-            status_code=502,
-            detail="The query embedding dimension does not match the Neon vector table.",
-        )
-    return [float(value) for value in vector]
-
-
-def validate_neon_config() -> None:
-    if CONFIG["deployment"]["vector_db"] != "neon_pgvector":
-        raise HTTPException(
-            status_code=500,
-            detail="The configured deployment vector database is not supported.",
-        )
-    if not os.getenv("DATABASE_URL"):
-        raise HTTPException(status_code=503, detail="DATABASE_URL is not configured.")
-
-
-def neon_connection():
-    validate_neon_config()
-    try:
-        return connect_neon()
-    except psycopg.Error as error:
-        raise HTTPException(
-            status_code=503,
-            detail="Could not connect to Neon Postgres or enable pgvector.",
-        ) from error
+    vector = vectorize_query(question, load_index()["idf"])
+    if any(not math.isfinite(value) for value in vector.values()):
+        raise HTTPException(status_code=502, detail="The query vector contains an invalid value.")
+    return vector
 
 
 def target_source(question: str) -> str | None:
@@ -130,97 +165,26 @@ def retrieve(question: str) -> list[dict]:
     top_k = CONFIG["retrieval"]["top_k"]
     if type(top_k) is not int or top_k < 1:
         raise HTTPException(status_code=500, detail="retrieval.top_k must be a positive integer.")
-    validate_neon_config()
-    query_vector = Vector(embed_query(question))
+    query_vector = embed_query(question)
+    if not query_vector:
+        return []
     source_id = target_source(question)
-    try:
-        with neon_connection() as connection:
-            with connection.cursor() as cursor:
-                cursor.execute(f"SELECT COUNT(*) FROM {VECTOR_TABLE}")
-                row_count = cursor.fetchone()[0]
-                if row_count == 0:
-                    raise HTTPException(
-                        status_code=503,
-                        detail="The Neon vector table is empty; run ingest_neon.py first.",
-                    )
-
-                if source_id:
-                    cursor.execute(
-                        f"""
-                        SELECT text, source_id, source_title, source_url,
-                               fetched_at, section, embedding_model,
-                               embedding <=> %s AS distance
-                        FROM {VECTOR_TABLE}
-                        WHERE source_id = %s
-                        ORDER BY embedding <=> %s
-                        LIMIT %s
-                        """,
-                        (query_vector, source_id, query_vector, top_k),
-                    )
-                else:
-                    cursor.execute(
-                        f"""
-                        SELECT text, source_id, source_title, source_url,
-                               fetched_at, section, embedding_model,
-                               embedding <=> %s AS distance
-                        FROM {VECTOR_TABLE}
-                        ORDER BY embedding <=> %s
-                        LIMIT %s
-                        """,
-                        (query_vector, query_vector, top_k),
-                    )
-                rows = cursor.fetchall()
-    except HTTPException:
-        raise
-    except psycopg.errors.UndefinedTable as error:
-        raise HTTPException(
-            status_code=503,
-            detail="The Neon vector table is not initialized; run ingest_neon.py first.",
-        ) from error
-    except psycopg.Error as error:
-        raise HTTPException(status_code=502, detail="Neon Postgres retrieval failed.") from error
-
-    matches = []
-    for (
-        text,
-        result_source_id,
-        source_title,
-        source_url,
-        fetched_at,
-        section,
-        embedding_model,
-        distance,
-    ) in rows:
-        if not isinstance(text, str) or not text.strip():
-            raise HTTPException(status_code=502, detail="Neon returned an invalid chunk.")
-        if (
-            result_source_id not in SOURCE_ALLOWLIST
-            or SOURCE_ALLOWLIST[result_source_id] != source_url
-        ):
-            raise HTTPException(status_code=502, detail="Neon returned an unapproved source.")
-        if embedding_model != CONFIG["deployment"]["embedding_model"]:
-            raise HTTPException(
-                status_code=503,
-                detail="The indexed embedding model does not match configuration; re-ingest the corpus.",
-            )
-        if not isinstance(distance, (int, float)) or not math.isfinite(distance):
-            raise HTTPException(status_code=502, detail="Neon returned an invalid distance.")
-        if not isinstance(fetched_at, date):
-            raise HTTPException(status_code=502, detail="Retrieved source has an invalid fetch date.")
-        matches.append(
-            {
-                "text": text,
-                "metadata": {
-                    "source_id": result_source_id,
-                    "source_title": source_title,
-                    "source_url": source_url,
-                    "fetched_at": fetched_at.isoformat(),
-                    "section": section,
-                },
-                "distance": float(distance),
-            }
-        )
-    return matches
+    index = load_index()
+    items = [
+        item
+        for item in index["items"]
+        if source_id is None or item["metadata"]["source_id"] == source_id
+    ]
+    matches = [
+        {
+            "text": item["text"],
+            "metadata": item["metadata"],
+            "distance": 1.0 - cosine_similarity(query_vector, item["vector"]),
+        }
+        for item in items
+    ]
+    matches.sort(key=lambda match: (match["distance"], match["metadata"]["source_id"]))
+    return matches[:top_k]
 
 
 def call_llm(question: str, matches: list[dict], provider: Provider) -> str:

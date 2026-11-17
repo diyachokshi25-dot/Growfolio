@@ -1009,7 +1009,7 @@
             <article class="pipeline-step"><h3>Load</h3><p>Fetch only the five configured public pages and validate them.</p></article>
             <article class="pipeline-step"><h3>Chunk</h3><p>Split page text into traceable, scheme-specific excerpts.</p></article>
             <article class="pipeline-step"><h3>Embed</h3><p>Encode chunks with the configured embedding model.</p></article>
-            <article class="pipeline-step"><h3>Store</h3><p>Keep chunk vectors and source metadata in Neon pgvector.</p></article>
+            <article class="pipeline-step"><h3>Index</h3><p>Bundle the sparse TF-IDF vectors and source metadata with the app.</p></article>
             <article class="pipeline-step"><h3>Retrieve &amp; cite</h3><p>Find relevant evidence and attach its source URL and fetch date.</p></article>
           </div>
         </section>
@@ -1064,7 +1064,17 @@
               provider: "groq"
             })
           });
-          const payload = await response.json();
+          const responseText = await response.text();
+          let payload;
+          try {
+            payload = JSON.parse(responseText);
+          } catch {
+            throw new Error(
+              response.ok
+                ? "The assistant returned an invalid response."
+                : `The assistant service failed (HTTP ${response.status}). Please try again later.`
+            );
+          }
           if (!response.ok) {
             throw new Error(payload.detail || "The request could not be completed.");
           }
