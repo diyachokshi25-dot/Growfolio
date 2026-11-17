@@ -1,6 +1,6 @@
 # Vercel implementation plan
 
-This plan follows [architecture.md](./architecture.md). The deployed app uses FastAPI on Vercel, a static browser UI, OpenAI embeddings, and Neon Postgres with pgvector. Corpus ingestion is a separate local command; Vercel Functions never write to a local vector database.
+This plan follows [architecture.md](./architecture.md). The deployed app uses FastAPI on Vercel, a static browser UI, local FastEmbed embeddings, and Neon Postgres with pgvector. Corpus ingestion is a separate local command; Vercel Functions never write to a local vector database.
 
 ## 1. Project structure and configuration
 
@@ -9,6 +9,7 @@ app.py                    # FastAPI entrypoint; exports app
 public/index.html         # Static FAQ interface
 ingest_neon.py            # Manual allowlisted ingestion
 neon_store.py             # Shared Neon connection and pgvector setup
+local_embeddings.py       # Cached FastEmbed ONNX model and local inference helpers
 config.yaml               # Sources, chunking, retrieval, model and collection settings
 requirements.txt          # Vercel runtime dependencies
 requirements-streamlit.txt# Optional legacy local UI dependencies
@@ -53,7 +54,7 @@ The section-aware chunker preserves short fact labels with their values, keeps s
 
 ## 5. Embedding
 
-Ingestion and query retrieval both call OpenAI `text-embedding-3-small`. The script validates vector count, dimension, numeric values, and finite values, then saves the embedding stage artifact to `data/neon/03_embeddings/embeddings.json`.
+Ingestion uses FastEmbed `passage_embed`; query retrieval uses `query_embed` from the same `BAAI/bge-small-en-v1.5` model. The first run downloads the public ONNX model into a temporary cache. The script validates vector count, dimension, numeric values, and finite values, then saves the embedding stage artifact to `data/neon/03_embeddings/embeddings.json`.
 
 ### Check
 
@@ -74,7 +75,7 @@ Ingestion uses the Neon pooled connection string from `DATABASE_URL`. It enables
 
 1. `POST /api/answer` validates a question (1–500 characters); Groq is the only accepted answer provider.
 2. The API blocks likely PII, advice, performance, and unsupported statement-download questions before embeddings or LLM calls.
-3. It generates an OpenAI query embedding, filters by named scheme, and requests configured top-k results from Neon using cosine distance.
+3. It generates a local FastEmbed query embedding, filters by named scheme, and requests configured top-k results from Neon using cosine distance.
 4. It validates metadata, source allowlist, fetch date, distance, and the maximum-distance threshold.
 5. It sends excerpts from only the cited source to Groq `openai/gpt-oss-20b`.
 6. It rejects overlong, URL-bearing, or performance-related generated text.
@@ -114,15 +115,15 @@ The page summarizes five approved source pages, four HDFC scheme pages, and five
 | Statement-download question | Say the indexed pages do not contain the steps |
 | Unknown fact or low retrieval confidence | Unsupported response; no LLM guess |
 | Source outside allowlist or invalid date | Reject retrieved result |
-| Missing API key or Neon configuration | Clear configuration error |
-| Provider/embedding/Neon outage | Visible failure, not a fabricated answer |
+| Missing Groq key or Neon configuration | Clear configuration error |
+| Groq, model download, or Neon failure | Visible failure, not a fabricated answer |
 | Too many sentences, generated URL, or performance claim | Replace with safe fallback |
 
 ### Deployment checklist
 
-- Add `GROQ_API_KEY`, `OPENAI_API_KEY`, and `DATABASE_URL` as Vercel Secret variables. Use Neon’s pooled connection string for `DATABASE_URL`.
-- Groq Free plan limits are organization-specific; daily request exhaustion displays “Limit for the day reached. Please try again after the daily quota resets.” Temporary rate limits display a retry-soon message. OpenAI remains required for embeddings and can incur separate API costs.
+- Add `GROQ_API_KEY` and `DATABASE_URL` as Vercel Secret variables. Use Neon’s pooled connection string for `DATABASE_URL`; no embedding API key is required.
+- Groq Free plan limits are organization-specific; daily request exhaustion displays “Limit for the day reached. Please try again after the daily quota resets.” Temporary rate limits display a retry-soon message. FastEmbed runs locally, though its first cold start downloads model weights and uses Vercel compute.
 - Select Production and any desired Preview environments.
-- Deploy, run `python ingest_neon.py` locally with the same `DATABASE_URL` and embedding key, and verify the ingestion manifest.
+- Deploy, run `python ingest_neon.py` locally with the same `DATABASE_URL`, and verify the ingestion manifest.
 - Configure Vercel Firewall rate limits before sharing the public URL; requests can incur API costs.
 - Never commit `.env` or paste secrets into chat or source code.

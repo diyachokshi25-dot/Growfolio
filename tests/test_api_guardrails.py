@@ -97,23 +97,17 @@ class ApiGuardrailTests(unittest.TestCase):
                 self.assertEqual(raised.exception.status_code, 429)
                 self.assertEqual(raised.exception.detail, expected_detail)
 
-    def test_embedding_http_errors_are_logged_and_report_status_without_key(self) -> None:
-        for status_code in (401, 429):
-            with self.subTest(status_code=status_code):
-                response = Mock(status_code=status_code)
-                response.raise_for_status.side_effect = requests.HTTPError(
-                    response=response
-                )
-                with patch.dict("os.environ", {"OPENAI_API_KEY": "test-key"}):
-                    with patch("app.requests.post", return_value=response):
-                        with self.assertLogs("app", level="ERROR") as captured:
-                            with self.assertRaises(HTTPException) as raised:
-                                embed_query("What is the minimum SIP?")
+    def test_fastembed_query_embedding_does_not_require_openai_key(self) -> None:
+        vector = [0.25] * CONFIG["deployment"]["embedding_dimensions"]
+        with patch.dict("os.environ", {"OPENAI_API_KEY": ""}):
+            with patch("app.embed_local_query", return_value=vector) as embed:
+                result = embed_query("What is the minimum SIP?")
 
-                self.assertEqual(raised.exception.status_code, 502)
-                self.assertIn(str(status_code), raised.exception.detail)
-                self.assertIn(str(status_code), "\n".join(captured.output))
-                self.assertNotIn("test-key", "\n".join(captured.output))
+        self.assertEqual(result, vector)
+        embed.assert_called_once_with(
+            CONFIG["deployment"]["embedding_model"],
+            "What is the minimum SIP?",
+        )
 
     def test_performance_questions_are_refused_and_use_amc_disclosure(self) -> None:
         question = "What are this fund's returns?"
@@ -151,9 +145,10 @@ class ApiGuardrailTests(unittest.TestCase):
             )
         ]
         vector = [0.0] * CONFIG["deployment"]["embedding_dimensions"]
-        with patch("app.embed_query", return_value=vector):
-            with patch("app.neon_connection", return_value=connection):
-                matches = retrieve("What is the HDFC large cap exit load?")
+        with patch.dict("os.environ", {"DATABASE_URL": "postgresql://test"}):
+            with patch("app.embed_query", return_value=vector):
+                with patch("app.neon_connection", return_value=connection):
+                    matches = retrieve("What is the HDFC large cap exit load?")
 
         self.assertEqual(len(matches), 1)
         self.assertEqual(matches[0]["metadata"]["source_id"], "hdfc_large_cap")
@@ -167,13 +162,24 @@ class ApiGuardrailTests(unittest.TestCase):
         cursor = connection.cursor.return_value.__enter__.return_value
         cursor.fetchone.return_value = (0,)
         vector = [0.0] * CONFIG["deployment"]["embedding_dimensions"]
-        with patch("app.embed_query", return_value=vector):
-            with patch("app.neon_connection", return_value=connection):
+        with patch.dict("os.environ", {"DATABASE_URL": "postgresql://test"}):
+            with patch("app.embed_query", return_value=vector):
+                with patch("app.neon_connection", return_value=connection):
+                    with self.assertRaises(HTTPException) as raised:
+                        retrieve("What is the minimum SIP?")
+
+        self.assertEqual(raised.exception.status_code, 503)
+        self.assertIn("run ingest_neon.py", raised.exception.detail)
+
+    def test_missing_database_url_fails_before_loading_embedding_model(self) -> None:
+        with patch.dict("os.environ", {"DATABASE_URL": ""}):
+            with patch("app.embed_query") as embed:
                 with self.assertRaises(HTTPException) as raised:
                     retrieve("What is the minimum SIP?")
 
         self.assertEqual(raised.exception.status_code, 503)
-        self.assertIn("run ingest_neon.py", raised.exception.detail)
+        self.assertEqual(raised.exception.detail, "DATABASE_URL is not configured.")
+        embed.assert_not_called()
 
 
 if __name__ == "__main__":

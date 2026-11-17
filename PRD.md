@@ -113,7 +113,7 @@ Opinionated or portfolio questions (for example, “Should I buy or sell?”) re
 
 ### FR-3: Embeddings
 
-- Deployment embedding model: OpenAI `text-embedding-3-small`. The legacy local Streamlit prototype may use its configured Sentence Transformers model separately.
+- Deployment embedding model: FastEmbed `BAAI/bge-small-en-v1.5` (384 dimensions), run locally with ONNX. The legacy Streamlit prototype may use its configured Sentence Transformers model separately.
 - Make the embedding provider/model configurable.
 - Use the exact same configured embedding model for ingestion and query-time retrieval.
 - Persist embeddings and their chunk identifiers for inspection.
@@ -131,7 +131,7 @@ Opinionated or portfolio questions (for example, “Should I buy or sell?”) re
 - Use Groq GPT-OSS 20B (`openai/gpt-oss-20b`) as the only answer-generation model.
 - Read `GROQ_API_KEY` from environment configuration (for example, `.env` or Vercel Secret variables); never commit secrets.
 - Keep the Groq model identifier in central configuration and surface API/configuration errors to the user.
-- OpenAI remains the embedding provider; it is separate from answer generation and may incur separate costs.
+- FastEmbed runs locally for embeddings and does not require an external embedding API key or per-request API charge.
 - Document that Groq Free plan limits vary by organization and that provider rate limits are surfaced clearly.
 - Do not persist prompts, questions, answers, or provider credentials.
 

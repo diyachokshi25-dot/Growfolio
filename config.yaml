@@ -38,8 +38,9 @@ retrieval:
 
 deployment:
   vector_db: neon_pgvector
-  embedding_model: text-embedding-3-small
-  embedding_dimensions: 1536
+  embedding_provider: fastembed
+  embedding_model: BAAI/bge-small-en-v1.5
+  embedding_dimensions: 384
 
 llm:
   providers:

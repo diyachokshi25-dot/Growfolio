@@ -1,4 +1,3 @@
-import logging
 import math
 import os
 import re
@@ -14,6 +13,7 @@ from fastapi import FastAPI, HTTPException
 from pgvector import Vector
 from pydantic import BaseModel, Field
 
+from local_embeddings import embed_query as embed_local_query
 from neon_store import VECTOR_TABLE, connect_neon
 from rate_limits import groq_rate_limit_message
 
@@ -29,7 +29,6 @@ SOURCE_ALLOWLIST = {source["id"]: source["url"] for source in SOURCES}
 Provider = Literal["groq"]
 
 app = FastAPI(title="HDFC Mutual Fund FAQ Assistant", version="1.0.0")
-logger = logging.getLogger(__name__)
 
 
 class AskRequest(BaseModel):
@@ -73,57 +72,12 @@ def refusal_source(question: str) -> str:
 
 
 def embed_query(question: str) -> list[float]:
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        raise HTTPException(status_code=503, detail="OPENAI_API_KEY is not configured.")
-    try:
-        response = requests.post(
-            "https://api.openai.com/v1/embeddings",
-            headers={"Authorization": f"Bearer {api_key}"},
-            json={
-                "model": CONFIG["deployment"]["embedding_model"],
-                "input": question,
-            },
-            timeout=30,
-        )
-        response.raise_for_status()
-        vector = response.json()["data"][0]["embedding"]
-    except requests.HTTPError as error:
-        response = error.response
-        status_code = response.status_code if response is not None else None
-        logger.error("OpenAI embedding request failed with HTTP %s.", status_code)
-        if status_code in (401, 403):
-            detail = (
-                f"OpenAI rejected the API key or project access (HTTP {status_code}). "
-                "Check the key and project permissions."
-            )
-        elif status_code == 429:
-            detail = (
-                "OpenAI embedding quota or rate limit reached (HTTP 429). "
-                "Check API billing and usage."
-            )
-        elif status_code is not None:
-            detail = f"OpenAI embedding request failed with HTTP {status_code}."
-        else:
-            detail = "OpenAI embedding request failed."
-        raise HTTPException(status_code=502, detail=detail) from error
-    except requests.Timeout as error:
-        logger.error("OpenAI embedding request timed out.")
+    if CONFIG["deployment"]["embedding_provider"] != "fastembed":
         raise HTTPException(
-            status_code=502,
-            detail="OpenAI embedding request timed out. Please try again.",
-        ) from error
-    except requests.RequestException as error:
-        logger.error(
-            "OpenAI embedding transport failed (%s).",
-            type(error).__name__,
+            status_code=500,
+            detail="The configured deployment embedding provider is not supported.",
         )
-        raise HTTPException(
-            status_code=502,
-            detail="Could not reach the OpenAI embedding service. Please try again.",
-        ) from error
-    except (KeyError, IndexError, TypeError, ValueError) as error:
-        raise HTTPException(status_code=502, detail="The embedding provider returned an invalid response.") from error
+    vector = embed_local_query(CONFIG["deployment"]["embedding_model"], question)
     if (
         not isinstance(vector, list)
         or not vector
@@ -138,7 +92,7 @@ def embed_query(question: str) -> list[float]:
     return [float(value) for value in vector]
 
 
-def neon_connection():
+def validate_neon_config() -> None:
     if CONFIG["deployment"]["vector_db"] != "neon_pgvector":
         raise HTTPException(
             status_code=500,
@@ -146,6 +100,10 @@ def neon_connection():
         )
     if not os.getenv("DATABASE_URL"):
         raise HTTPException(status_code=503, detail="DATABASE_URL is not configured.")
+
+
+def neon_connection():
+    validate_neon_config()
     try:
         return connect_neon()
     except psycopg.Error as error:
@@ -172,6 +130,7 @@ def retrieve(question: str) -> list[dict]:
     top_k = CONFIG["retrieval"]["top_k"]
     if type(top_k) is not int or top_k < 1:
         raise HTTPException(status_code=500, detail="retrieval.top_k must be a positive integer.")
+    validate_neon_config()
     query_vector = Vector(embed_query(question))
     source_id = target_source(question)
     try:

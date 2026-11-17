@@ -1,7 +1,6 @@
 import hashlib
 import json
 import math
-import os
 import re
 from datetime import date
 from pathlib import Path
@@ -14,6 +13,7 @@ from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 from pgvector import Vector
 
+from local_embeddings import embed_passages
 from neon_store import VECTOR_TABLE, connect_neon
 
 
@@ -222,38 +222,20 @@ def chunk_pages(pages: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 def embed_chunks(chunks: list[dict[str, Any]]) -> tuple[list[list[float]], int]:
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        raise RuntimeError("Set OPENAI_API_KEY before running ingestion.")
+    if CONFIG["deployment"]["embedding_provider"] != "fastembed":
+        raise RuntimeError("The configured deployment embedding provider is not supported.")
     model = CONFIG["deployment"]["embedding_model"]
-    vectors = []
-    for start in range(0, len(chunks), 100):
-        batch = chunks[start : start + 100]
-        response = requests.post(
-            "https://api.openai.com/v1/embeddings",
-            headers={"Authorization": f"Bearer {api_key}"},
-            json={"model": model, "input": [chunk["text"] for chunk in batch]},
-            timeout=60,
-        )
-        response.raise_for_status()
-        items = response.json().get("data")
-        if not isinstance(items, list) or len(items) != len(batch):
-            raise RuntimeError("Embedding response count did not match chunk count.")
-        items.sort(key=lambda item: item["index"])
-        for item in items:
-            vector = item.get("embedding")
-            if (
-                not isinstance(vector, list)
-                or not vector
-                or any(
-                    not isinstance(value, (int, float)) or not math.isfinite(value)
-                    for value in vector
-                )
-            ):
-                raise RuntimeError("Embedding provider returned an invalid vector.")
-            vectors.append([float(value) for value in vector])
+    vectors = embed_passages(model, [chunk["text"] for chunk in chunks])
     dimension = len(vectors[0]) if vectors else 0
-    if not dimension or any(len(vector) != dimension for vector in vectors):
+    if (
+        len(vectors) != len(chunks)
+        or not dimension
+        or any(
+            len(vector) != dimension
+            or any(not math.isfinite(value) for value in vector)
+            for vector in vectors
+        )
+    ):
         raise RuntimeError("Embedding vectors are empty or have inconsistent dimensions.")
     return vectors, dimension
 
@@ -296,7 +278,7 @@ def main() -> None:
     write_json(
         ARTIFACT_ROOT / "03_embeddings" / "embeddings.json",
         {
-            "provider": "openai",
+            "provider": CONFIG["deployment"]["embedding_provider"],
             "model": CONFIG["deployment"]["embedding_model"],
             "dimension": dimension,
             "count": len(vectors),
