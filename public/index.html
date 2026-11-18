@@ -43,7 +43,7 @@
       }
 
       a { color: var(--blue); }
-      button, textarea, select { font: inherit; }
+      button, textarea, select, input { font: inherit; }
       button, a, select { -webkit-tap-highlight-color: transparent; }
 
       :focus-visible {
@@ -372,11 +372,14 @@
       .riskometer-panel {
         display: grid;
         gap: 8px;
+        padding: 14px;
+        border: 1px solid #dce5ed;
+        border-radius: 12px;
+        background: #fff;
         text-align: center;
       }
 
-      .riskometer-panel[hidden],
-      .riskometer-empty[hidden] { display: none; }
+      .riskometer-panel[hidden] { display: none; }
 
       .riskometer-title {
         margin: 0;
@@ -441,7 +444,7 @@
         height: 65px;
         border-radius: 2px;
         background: var(--ink);
-        transform: rotate(75deg);
+        transform: rotate(var(--risk-angle, 65deg));
         transform-origin: 50% 100%;
       }
 
@@ -462,10 +465,13 @@
         right: 0;
         bottom: 0;
         left: 0;
-        color: #853b35;
         font-size: 11px;
         font-weight: 700;
       }
+
+      .riskometer-value[data-level="lower"] { color: #486b50; }
+      .riskometer-value[data-level="higher"] { color: #9a6b16; }
+      .riskometer-value[data-level="highest"] { color: #853b35; }
 
       .riskometer-scale {
         display: flex;
@@ -489,17 +495,229 @@
         line-height: 1.45;
       }
 
-      .riskometer-empty {
+      .riskometer-official {
+        margin: 0;
+        color: #853b35;
+        font-size: 10px;
+        font-weight: 700;
+      }
+
+      .calculator-section { padding: 0 0 60px; }
+
+      .calculator-card {
         display: grid;
-        min-height: 138px;
-        align-content: center;
+        grid-template-columns: minmax(0, 1fr) minmax(280px, .9fr);
+        gap: clamp(24px, 5vw, 52px);
+        padding: clamp(22px, 4vw, 38px);
+        border: 1px solid #d6e1eb;
+        border-radius: 22px;
+        background: var(--paper);
+        box-shadow: var(--shadow);
+      }
+
+      .calculator-copy h3 {
+        margin: 8px 0 8px;
+        color: #2b3d50;
+        font: 500 clamp(25px, 3vw, 34px)/1.15 "Bodoni Moda", Georgia, serif;
+      }
+
+      .calculator-copy > p {
+        margin: 0 0 20px;
+        color: var(--muted);
+        font: 16px/1.5 "EB Garamond", Georgia, serif;
+      }
+
+      .calculator-fields {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .calculator-fields label {
+        margin: 0;
+        color: #33475b;
+        font-size: 9px;
+        letter-spacing: .06em;
+      }
+
+      .calculator-fields input,
+      .calculator-fields select,
+      .calculator-readout {
+        display: block;
+        width: 100%;
+        min-height: 46px;
+        margin-top: 7px;
+        padding: 0 10px;
+        border: 1px solid #c9d7e4;
+        border-radius: 9px;
+        background: #fff;
+        color: var(--ink);
+        font-size: 14px;
+      }
+
+      .calculator-readout {
+        display: flex;
+        align-items: center;
+        border-color: #b6d2b3;
+        background: #f3f8f1;
+        color: #416448;
+        font-weight: 700;
+      }
+
+      .calculator-fields input:focus,
+      .calculator-fields select:focus {
+        border-color: var(--blue);
+        outline: 3px solid rgba(49, 93, 145, .14);
+      }
+
+      .calculator-source {
+        grid-column: 1 / -1;
+        margin: 0;
+        color: #657587;
+        font-size: 10px;
+      }
+
+      .calculator-source[hidden] { display: none; }
+
+      .calculator-source a {
+        font-weight: 700;
+        text-underline-offset: 3px;
+      }
+
+      .calculator-warning {
+        margin: 16px 0 0;
+        padding: 11px 13px;
+        border: 1px solid #eadcae;
+        border-radius: 10px;
+        background: #fff9e8;
+        color: #6b5b32;
+        font-size: 11px;
+        line-height: 1.5;
+      }
+
+      .calculator-output {
+        align-self: center;
+        min-width: 0;
+      }
+
+      .calculator-empty {
+        display: grid;
+        min-height: 180px;
+        place-items: center;
+        padding: 20px;
+        border: 1px dashed #cbd9e8;
+        border-radius: 14px;
+        background: var(--blue-pale);
+        color: #4a627c;
+        font: 18px/1.45 "EB Garamond", Georgia, serif;
+        text-align: center;
+      }
+
+      .calculator-empty[hidden],
+      .calculator-results[hidden] { display: none; }
+
+      .calculator-results {
+        display: grid;
+        gap: 16px;
+      }
+
+      .calculator-summary {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
         gap: 10px;
       }
 
-      .riskometer-empty p {
+      .calculator-total {
+        min-width: 0;
+        padding: 13px;
+        border: 1px solid #dce5ed;
+        border-radius: 11px;
+        background: #fff;
+      }
+
+      .calculator-total span {
+        display: block;
+        color: var(--muted);
+        font-size: 9px;
+        font-weight: 700;
+        letter-spacing: .07em;
+        text-transform: uppercase;
+      }
+
+      .calculator-total strong {
+        display: block;
+        margin-top: 4px;
+        color: #2b3d50;
+        font: 600 clamp(17px, 2.2vw, 23px)/1.2 "Bodoni Moda", Georgia, serif;
+        overflow-wrap: anywhere;
+      }
+
+      .calculator-total.projected {
+        border-color: #b6d2b3;
+        background: #f3f8f1;
+      }
+
+      .calculator-total.projected strong { color: #416448; }
+
+      .projection-chart {
+        display: grid;
+        gap: 12px;
         margin: 0;
+        padding: 15px;
+        border-radius: 13px;
+        background: #f4f8fc;
+      }
+
+      .projection-chart figcaption {
         color: #3d5267;
-        font: 500 18px/1.3 "Bodoni Moda", Georgia, serif;
+        font: 500 17px/1.2 "Bodoni Moda", Georgia, serif;
+      }
+
+      .projection-row {
+        display: grid;
+        grid-template-columns: minmax(92px, .85fr) minmax(0, 1fr);
+        align-items: center;
+        gap: 8px 12px;
+        color: #526476;
+        font-size: 10px;
+      }
+
+      .projection-row strong {
+        grid-column: 1 / -1;
+        color: #33475b;
+        font-size: 11px;
+      }
+
+      .projection-track {
+        height: 12px;
+        overflow: hidden;
+        border-radius: 999px;
+        background: #e2eaf1;
+      }
+
+      .projection-bar {
+        display: block;
+        width: 0;
+        height: 100%;
+        border-radius: inherit;
+        transition: width .2s ease;
+      }
+
+      .projection-bar.invested { background: #7892ad; }
+      .projection-bar.estimated { background: #719c69; }
+
+      .calculator-gain {
+        margin: 0;
+        color: #486b50;
+        font-size: 11px;
+        font-weight: 700;
+      }
+
+      .calculator-method {
+        margin: 0;
+        color: #657587;
+        font-size: 10px;
+        line-height: 1.45;
       }
 
       .privacy-note {
@@ -517,6 +735,15 @@
         background: #f4f8fc;
         animation: card-arrive .28s ease-out both;
       }
+
+      .response.has-riskometer {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(190px, 240px);
+        align-items: start;
+        gap: 20px;
+      }
+
+      .response-copy { min-width: 0; }
 
       .response[hidden] { display: none; }
 
@@ -684,6 +911,7 @@
         .assistant-section { padding-block: 34px 42px; }
         .assistant-section .section-heading h2 { font-size: clamp(36px, 10vw, 48px); }
         .assistant-card { grid-template-columns: 1fr; }
+        .response.has-riskometer { grid-template-columns: 1fr; }
         .assistant-aside {
           min-height: 130px;
           flex-direction: row;
@@ -691,6 +919,9 @@
           border-top: 1px solid #dce5ed;
           border-left: 0;
         }
+        .calculator-card { grid-template-columns: 1fr; }
+        .calculator-fields { grid-template-columns: 1fr; }
+        .calculator-section { padding-bottom: 48px; }
         .form-row { justify-content: stretch; }
         .ask-button { width: 100%; }
         .source-grid { grid-template-columns: 1fr; }
@@ -736,6 +967,7 @@
         </a>
         <nav class="site-nav" aria-label="Main navigation">
           <a href="#assistant">Ask a question</a>
+          <a href="#calculator">SIP calculator</a>
           <a href="#schemes">Sources</a>
         </nav>
         <span class="facts-badge">Facts only · No advice</span>
@@ -748,7 +980,7 @@
               <span class="eyebrow">The question desk</span>
               <h2 id="assistant-heading">What would you like to know?</h2>
             </div>
-            <p>Ask naturally, in your own words. Name the scheme when it matters; answers include a source link and date.</p>
+            <p>Ask naturally, in your own words. Answers include a source link and date. Use the calculator below for a separate, assumption-based SIP illustration.</p>
           </div>
           <div class="assistant-card">
             <div class="assistant-main">
@@ -771,35 +1003,96 @@
               </form>
 
               <section class="response" id="result" aria-live="polite" aria-atomic="true" hidden>
-                <p class="response-label">Your Answer</p>
-                <p class="response-scheme" id="scheme"></p>
-                <p class="response-answer" id="answer"></p>
-                <div class="response-meta">
-                  <a id="source" target="_blank" rel="noopener noreferrer" hidden></a>
-                  <span id="updated"></span>
+                <div class="response-copy">
+                  <p class="response-label">Your Answer</p>
+                  <p class="response-scheme" id="scheme"></p>
+                  <p class="response-answer" id="answer"></p>
+                  <div class="response-meta">
+                    <a id="source" target="_blank" rel="noopener noreferrer" hidden></a>
+                    <span id="updated"></span>
+                  </div>
+                  <div class="follow-up-questions" id="followups" aria-label="Related questions" hidden></div>
+                  <p class="response-error" id="error" role="alert"></p>
                 </div>
-                <div class="follow-up-questions" id="followups" aria-label="Related questions" hidden></div>
-                <p class="response-error" id="error" role="alert"></p>
+                <section class="riskometer-panel" id="riskometer" aria-labelledby="riskometer-title" hidden>
+                  <h3 class="riskometer-title" id="riskometer-title">Relative riskometer · category estimate</h3>
+                  <p class="riskometer-scheme" id="riskometer-scheme"></p>
+                  <div class="riskometer-gauge" id="riskometer-gauge" role="img" aria-label="Relative category estimate">
+                    <span class="riskometer-needle" aria-hidden="true"></span>
+                    <span class="riskometer-value" id="riskometer-value"></span>
+                  </div>
+                  <div class="riskometer-scale" aria-hidden="true"><span>Lower risk</span><span>Higher risk</span></div>
+                  <p class="riskometer-official" id="riskometer-official"></p>
+                  <a class="riskometer-source" id="riskometer-source" target="_blank" rel="noopener noreferrer"></a>
+                  <p class="riskometer-note">This is a non-official, category-based comparison within these four schemes, not a measured score. Lower risk can mean lower return potential; higher risk may mean greater potential and larger losses, but neither outcome is guaranteed. This is not a safety rating or recommendation.</p>
+                </section>
               </section>
             </div>
-            <aside class="assistant-aside" aria-label="Scheme riskometer and privacy reminder">
-              <div class="riskometer-empty" id="riskometer-empty">
-                <span class="card-kicker">Source-reported riskometer</span>
-                <p>Ask about a listed scheme to see its published risk category.</p>
-              </div>
-              <section class="riskometer-panel" id="riskometer" aria-labelledby="riskometer-title" hidden>
-                <h3 class="riskometer-title" id="riskometer-title">Source-reported riskometer</h3>
-                <p class="riskometer-scheme" id="riskometer-scheme"></p>
-                <div class="riskometer-gauge" role="img" aria-label="Riskometer category: Very High Risk">
-                  <span class="riskometer-needle" aria-hidden="true"></span>
-                  <span class="riskometer-value" id="riskometer-value">Very High Risk</span>
-                </div>
-                <div class="riskometer-scale" aria-hidden="true"><span>Low</span><span>Very High</span></div>
-                <a class="riskometer-source" id="riskometer-source" target="_blank" rel="noopener noreferrer"></a>
-                <p class="riskometer-note">This is the source’s risk classification—not performance, a safety guarantee, or a recommendation. Check the linked page for the latest category.</p>
-              </section>
+            <aside class="assistant-aside" aria-label="Privacy reminder">
               <p class="privacy-note">Facts only, no investment advice. Don’t enter PAN, Aadhaar, account numbers, OTPs, phone numbers, or email addresses.</p>
             </aside>
+          </div>
+        </section>
+
+        <section class="calculator-section container" id="calculator" aria-labelledby="calculator-heading">
+          <div class="calculator-card">
+            <div class="calculator-copy">
+              <span class="eyebrow">A hypothetical illustration</span>
+              <h3 id="calculator-heading">SIP returns calculator</h3>
+              <p>Choose a scheme and enter a monthly SIP and investment period. The estimate uses that page’s published 3-year annualised return and updates as you type.</p>
+              <div class="calculator-fields">
+                <label for="sip-scheme">Scheme
+                  <select id="sip-scheme" required>
+                    <option value="">Choose a listed scheme</option>
+                    <option value="https://groww.in/mutual-funds/hdfc-large-cap-fund-direct-growth">HDFC Large Cap Fund Direct Growth</option>
+                    <option value="https://groww.in/mutual-funds/hdfc-equity-fund-direct-growth">HDFC Flexi Cap Direct Plan Growth</option>
+                    <option value="https://groww.in/mutual-funds/hdfc-elss-tax-saver-fund-direct-plan-growth">HDFC ELSS Tax Saver Fund Direct Plan Growth</option>
+                    <option value="https://groww.in/mutual-funds/hdfc-mid-cap-fund-direct-growth">HDFC Mid Cap Fund Direct Growth</option>
+                  </select>
+                </label>
+                <label for="sip-amount">Monthly SIP amount (₹)
+                  <input id="sip-amount" type="number" min="1" max="1000000000" step="1" inputmode="decimal" placeholder="e.g., 5,000" required>
+                </label>
+                <label for="sip-years">Investment period (years)
+                  <input id="sip-years" type="number" min="1" max="50" step="1" inputmode="numeric" placeholder="e.g., 10" required>
+                </label>
+                <label>Published 3-year annualised return
+                  <output id="sip-rate" class="calculator-readout">Choose a scheme</output>
+                </label>
+                <p class="calculator-source" id="calculator-source" hidden><a id="calculator-source-link" target="_blank" rel="noopener noreferrer"></a> · Source figure dated 18 Nov 2026</p>
+              </div>
+              <p class="calculator-warning"><strong>Warning: Indicational only.</strong> The calculation uses the selected scheme’s published 3-year annualised historical return as an illustration—not a forecast or guarantee. Past returns do not predict future results; actual returns can be negative. This is not investment advice.</p>
+            </div>
+            <div class="calculator-output">
+              <div class="calculator-empty" id="calculator-empty">Choose a scheme and enter a monthly SIP and term to see an illustrative estimate.</div>
+              <section class="calculator-results" id="calculator-results" aria-live="polite" hidden>
+                <div class="calculator-summary">
+                  <div class="calculator-total">
+                    <span>Total contributions</span>
+                    <strong id="calculator-invested"></strong>
+                  </div>
+                  <div class="calculator-total projected">
+                    <span>Illustrative value</span>
+                    <strong id="calculator-projected"></strong>
+                  </div>
+                </div>
+                <figure class="projection-chart">
+                  <figcaption>Contributions and illustrative value</figcaption>
+                  <div class="projection-row">
+                    <span>Total contributions</span>
+                    <div class="projection-track" aria-hidden="true"><span class="projection-bar invested" id="invested-bar"></span></div>
+                    <strong id="invested-chart-value"></strong>
+                  </div>
+                  <div class="projection-row">
+                    <span>Illustrative value</span>
+                    <div class="projection-track" aria-hidden="true"><span class="projection-bar estimated" id="projected-bar"></span></div>
+                    <strong id="projected-chart-value"></strong>
+                  </div>
+                </figure>
+                <p class="calculator-gain" id="calculator-gain"></p>
+                <p class="calculator-method">Assumes month-end SIP contributions and monthly compounding of the published 3-year annualised rate. This simplified illustration excludes taxes, fees, and scheme-specific expenses.</p>
+              </section>
+            </div>
           </div>
         </section>
 
@@ -834,7 +1127,7 @@
           <span class="disclaimer-icon" aria-hidden="true">✦</span>
           <div>
             <strong>Facts only · No financial advice</strong>
-            <p>This assistant provides factual information from the listed pages. It does not provide investment, legal, or tax advice, compare performance, or make recommendations. Don’t enter PAN, Aadhaar, account numbers, OTPs, phone numbers, or email addresses.</p>
+            <p>This assistant provides facts from the listed pages. The category-based risk comparison is non-official; the calculator uses a published historical return as an illustration, not a forecast. Neither provides investment, legal, or tax advice or recommendations. Don’t enter PAN, Aadhaar, account numbers, OTPs, phone numbers, or email addresses.</p>
           </div>
         </section>
       </main>
@@ -854,16 +1147,137 @@
       const errorMessage = document.querySelector("#error");
       const followups = document.querySelector("#followups");
       const riskometer = document.querySelector("#riskometer");
-      const riskometerEmpty = document.querySelector("#riskometer-empty");
       const riskometerScheme = document.querySelector("#riskometer-scheme");
+      const riskometerGauge = document.querySelector("#riskometer-gauge");
+      const riskometerValue = document.querySelector("#riskometer-value");
+      const riskometerOfficial = document.querySelector("#riskometer-official");
       const riskometerSource = document.querySelector("#riskometer-source");
 
-      const riskometerBySource = new Map([
-        ["https://groww.in/mutual-funds/hdfc-large-cap-fund-direct-growth", "Very High Risk"],
-        ["https://groww.in/mutual-funds/hdfc-equity-fund-direct-growth", "Very High Risk"],
-        ["https://groww.in/mutual-funds/hdfc-elss-tax-saver-fund-direct-plan-growth", "Very High Risk"],
-        ["https://groww.in/mutual-funds/hdfc-mid-cap-fund-direct-growth", "Very High Risk"]
+      const schemeInfoBySource = new Map([
+        ["https://groww.in/mutual-funds/hdfc-large-cap-fund-direct-growth", {
+          relativeLabel: "Lower within this group",
+          level: "lower",
+          angle: "-38deg",
+          schemeType: "Large Cap",
+          officialRisk: "Very High Risk",
+          annualizedReturn: 10.57
+        }],
+        ["https://groww.in/mutual-funds/hdfc-equity-fund-direct-growth", {
+          relativeLabel: "Higher within this group",
+          level: "higher",
+          angle: "20deg",
+          schemeType: "Flexi Cap",
+          officialRisk: "Very High Risk",
+          annualizedReturn: 17.30
+        }],
+        ["https://groww.in/mutual-funds/hdfc-elss-tax-saver-fund-direct-plan-growth", {
+          relativeLabel: "Higher within this group",
+          level: "higher",
+          angle: "20deg",
+          schemeType: "ELSS",
+          officialRisk: "Very High Risk",
+          annualizedReturn: 14.07
+        }],
+        ["https://groww.in/mutual-funds/hdfc-mid-cap-fund-direct-growth", {
+          relativeLabel: "Highest within this group",
+          level: "highest",
+          angle: "65deg",
+          schemeType: "Mid Cap",
+          officialRisk: "Very High Risk",
+          annualizedReturn: 15.50
+        }]
       ]);
+
+      const calculatorSchemeSelect = document.querySelector("#sip-scheme");
+      const calculatorInputs = [
+        document.querySelector("#sip-amount"),
+        document.querySelector("#sip-years")
+      ];
+      const calculatorRate = document.querySelector("#sip-rate");
+      const calculatorSource = document.querySelector("#calculator-source");
+      const calculatorSourceLink = document.querySelector("#calculator-source-link");
+      const calculatorEmpty = document.querySelector("#calculator-empty");
+      const calculatorResults = document.querySelector("#calculator-results");
+      const calculatorInvested = document.querySelector("#calculator-invested");
+      const calculatorProjected = document.querySelector("#calculator-projected");
+      const investedChartValue = document.querySelector("#invested-chart-value");
+      const projectedChartValue = document.querySelector("#projected-chart-value");
+      const investedBar = document.querySelector("#invested-bar");
+      const projectedBar = document.querySelector("#projected-bar");
+      const calculatorGain = document.querySelector("#calculator-gain");
+      const formatRupees = new Intl.NumberFormat("en-IN", {
+        style: "currency",
+        currency: "INR",
+        maximumFractionDigits: 0
+      });
+
+      function updateCalculator() {
+        const selectedScheme = schemeInfoBySource.get(calculatorSchemeSelect.value);
+        const inputs = calculatorInputs.map((input) => Number(input.value));
+        const allEntered = selectedScheme &&
+          calculatorInputs.every((input) => input.value !== "");
+        const allValid = calculatorSchemeSelect.validity.valid &&
+          calculatorInputs.every((input) => input.validity.valid);
+        [calculatorSchemeSelect, ...calculatorInputs].forEach((input) => {
+          input.setAttribute(
+            "aria-invalid",
+            String(input.value !== "" && !input.validity.valid)
+          );
+        });
+        calculatorResults.hidden = true;
+        calculatorEmpty.hidden = false;
+        calculatorRate.textContent = selectedScheme
+          ? `${selectedScheme.annualizedReturn.toFixed(2)}% p.a.`
+          : "Choose a scheme";
+        calculatorSource.hidden = !selectedScheme;
+        if (selectedScheme) {
+          calculatorSourceLink.href = calculatorSchemeSelect.value;
+          calculatorSourceLink.textContent = `Source: ${calculatorSchemeSelect.selectedOptions[0].textContent}`;
+        } else {
+          calculatorSourceLink.removeAttribute("href");
+          calculatorSourceLink.textContent = "";
+        }
+
+        if (!allEntered) {
+          calculatorEmpty.textContent = "Choose a scheme and enter a monthly SIP and term to see an illustrative estimate.";
+          return;
+        }
+        if (!allValid || inputs.some((value) => !Number.isFinite(value))) {
+          calculatorEmpty.textContent =
+            "Use a monthly SIP from ₹1 to ₹1,000,000,000 and a term from 1 to 50 years.";
+          return;
+        }
+
+        const [monthlyAmount, years] = inputs;
+        const months = years * 12;
+        const monthlyRate = Math.pow(1 + selectedScheme.annualizedReturn / 100, 1 / 12) - 1;
+        const totalInvested = monthlyAmount * months;
+        const estimatedValue = monthlyRate === 0
+          ? totalInvested
+          : monthlyAmount * ((Math.pow(1 + monthlyRate, months) - 1) / monthlyRate);
+        if (!Number.isFinite(estimatedValue)) {
+          calculatorEmpty.textContent = "These assumptions are outside the calculator’s supported range.";
+          return;
+        }
+
+        const chartMaximum = Math.max(totalInvested, estimatedValue, 1);
+        const gain = estimatedValue - totalInvested;
+        calculatorInvested.textContent = formatRupees.format(totalInvested);
+        calculatorProjected.textContent = formatRupees.format(estimatedValue);
+        investedChartValue.textContent = formatRupees.format(totalInvested);
+        projectedChartValue.textContent = formatRupees.format(estimatedValue);
+        investedBar.style.width = `${(totalInvested / chartMaximum) * 100}%`;
+        projectedBar.style.width = `${(estimatedValue / chartMaximum) * 100}%`;
+        calculatorGain.textContent = `${gain >= 0 ? "Illustrative gain" : "Illustrative loss"}: ${formatRupees.format(Math.abs(gain))}`;
+        calculatorEmpty.hidden = true;
+        calculatorResults.hidden = false;
+      }
+
+      calculatorInputs.forEach((input) => {
+        input.addEventListener("input", updateCalculator);
+        input.addEventListener("change", updateCalculator);
+      });
+      calculatorSchemeSelect.addEventListener("change", updateCalculator);
 
       document.querySelectorAll("[data-question]").forEach((button) => {
         button.addEventListener("click", () => {
@@ -885,9 +1299,7 @@
         followups.hidden = true;
         followups.replaceChildren();
         riskometer.hidden = true;
-        riskometerEmpty.hidden = false;
-        riskometerEmpty.querySelector("p").textContent =
-          "Ask about a listed scheme to see its published risk category.";
+        result.classList.remove("has-riskometer");
         riskometerScheme.textContent = "";
         riskometerSource.removeAttribute("href");
         riskometerSource.textContent = "";
@@ -936,16 +1348,21 @@
           const sourceTitle = sourceCard?.querySelector(".source-title")?.textContent?.trim();
           source.textContent = sourceTitle ? `Source: ${sourceTitle} ↗` : "View source page ↗";
           source.hidden = false;
-          const riskCategory = riskometerBySource.get(sourceUrl.href);
-          if (sourceTitle && riskCategory) {
+          const schemeInfo = schemeInfoBySource.get(sourceUrl.href);
+          if (sourceTitle && schemeInfo) {
             riskometerScheme.textContent = sourceTitle;
+            riskometerValue.textContent = schemeInfo.relativeLabel;
+            riskometerValue.dataset.level = schemeInfo.level;
+            riskometerGauge.style.setProperty("--risk-angle", schemeInfo.angle);
+            riskometerGauge.setAttribute(
+              "aria-label",
+              `${schemeInfo.relativeLabel}, a non-official ${schemeInfo.schemeType} category estimate`
+            );
+            riskometerOfficial.textContent = `Official source riskometer: ${schemeInfo.officialRisk}`;
             riskometerSource.href = sourceUrl.href;
             riskometerSource.textContent = `Source: ${sourceTitle} ↗`;
             riskometer.hidden = false;
-            riskometerEmpty.hidden = true;
-          } else {
-            riskometerEmpty.querySelector("p").textContent =
-              "A scheme-specific riskometer isn’t available for this source.";
+            result.classList.add("has-riskometer");
           }
           if (sourceTitle && sourceTitle !== "HDFC Mutual Fund overview") {
             scheme.textContent = `Relevant scheme: ${sourceTitle}`;

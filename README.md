@@ -1,6 +1,6 @@
 # HDFC mutual fund FAQ assistant
 
-A facts-only FAQ prototype for five HDFC mutual-fund pages. The Vercel deployment uses a FastAPI API, a static browser UI, Groq `openai/gpt-oss-20b` for answer generation, and a bundled TF-IDF vector index. It does not need a hosted vector database, does not provide investment advice, and does not save questions and answers.
+A facts-only FAQ prototype for five HDFC mutual-fund pages, with a client-side SIP illustration calculator and a relative scheme-category risk display. The Vercel deployment uses a FastAPI API, a static browser UI, Groq `openai/gpt-oss-20b` for answer generation, and a bundled TF-IDF vector index. It does not need a hosted vector database, does not provide investment advice, and does not save questions and answers.
 
 ## Deploy on Vercel
 
@@ -41,7 +41,9 @@ The API health check is `/api/health`. If Vercel environment variables change, r
 - Groq `openai/gpt-oss-20b` is the sole answer model. Groq Free plan model availability and limits are account-specific.
 - Vercel reads the bundled, read-only `deployment_index.py`; there is no hosted database, database credential, model download, or external vector service.
 - The source corpus does not explain statement downloads; the assistant declines to invent steps.
+- The SIP calculator uses each scheme page’s 3-year annualised historical return as listed on 18 Nov 2026. These are static snapshots, not live rates or forecasts; past returns do not predict future results. The illustration excludes taxes and expenses, and calculator inputs stay in the browser rather than being sent to the API.
+- The risk display is a non-official, category-based relative estimate for the four listed schemes, not a measured risk score. The source pages currently label each scheme “Very High Risk”; see each linked page for its published label.
 - This is a demo, not a production financial-support service. Review source freshness, security, cost, rate limits, privacy, and provider terms before public use.
 - Configure Vercel Firewall rate limits before sharing the public URL; visitors consume Vercel compute and Groq usage.
 
-**Disclaimer:** Facts only. This assistant does not provide investment, legal, or tax advice, make recommendations, or compare performance. Do not enter PAN, Aadhaar, account numbers, OTPs, phone numbers, or email addresses.
+**Disclaimer:** Facts only. The calculator is indicational, not a return forecast or guarantee. The category-based risk comparison is non-official and does not predict returns. Neither feature provides investment, legal, or tax advice or recommendations. Do not enter PAN, Aadhaar, account numbers, OTPs, phone numbers, or email addresses.
