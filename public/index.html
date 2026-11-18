@@ -8,7 +8,7 @@
     <title>Growfolio — HDFC Mutual Fund FAQ</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,500;0,6..96,600;1,6..96,500;1,6..96,600&family=EB+Garamond:wght@400;500;600&family=Epilogue:wght@400;500;600;700&family=Pinyon+Script&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,500;0,6..96,600;1,6..96,500;1,6..96,600&family=EB+Garamond:wght@400;500;600&family=Epilogue:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
       :root {
         color-scheme: light;
@@ -165,14 +165,6 @@
         content: "";
       }
 
-      .hero {
-        display: grid;
-        grid-template-columns: minmax(0, 1.15fr) minmax(250px, .85fr);
-        align-items: center;
-        gap: clamp(30px, 6vw, 78px);
-        padding-block: clamp(48px, 8vw, 90px) 48px;
-      }
-
       .eyebrow {
         display: inline-flex;
         align-items: center;
@@ -192,114 +184,6 @@
       }
 
       h1, h2, h3, p { margin-top: 0; }
-
-      h1 {
-        max-width: 650px;
-        margin: 17px 0 16px;
-        font: 500 clamp(42px, 6.2vw, 76px)/1.02 "Bodoni Moda", Georgia, serif;
-        letter-spacing: -.04em;
-      }
-
-      h1 em {
-        color: var(--blue);
-        font-weight: 500;
-      }
-
-      .hero-copy {
-        max-width: 560px;
-        margin-bottom: 25px;
-        color: #566575;
-        font: 400 20px/1.55 "EB Garamond", Georgia, serif;
-      }
-
-      .script-note {
-        color: #a57719;
-        font: 26px/1 "Pinyon Script", cursive;
-      }
-
-      .hero-art {
-        position: relative;
-        display: grid;
-        min-height: 290px;
-        place-items: center;
-      }
-
-      .art-card {
-        position: relative;
-        display: grid;
-        width: min(100%, 340px);
-        min-height: 255px;
-        place-items: center;
-        border: 1px solid #d6e0e9;
-        border-radius: 48% 48% 22px 22px;
-        background:
-          linear-gradient(180deg, rgba(220, 234, 250, .55), rgba(255,255,255,.82)),
-          repeating-linear-gradient(90deg, transparent 0 22px, rgba(220,234,250,.7) 22px 44px);
-        box-shadow: var(--shadow);
-      }
-
-      .art-card::before {
-        position: absolute;
-        inset: 12px;
-        border: 1px dashed rgba(49, 93, 145, .42);
-        border-radius: 48% 48% 15px 15px;
-        content: "";
-        pointer-events: none;
-      }
-
-      .art-seal {
-        position: absolute;
-        z-index: 1;
-        top: 22px;
-        right: 22px;
-        display: grid;
-        width: 55px;
-        height: 55px;
-        place-items: center;
-        border: 2px solid rgba(255,255,255,.8);
-        border-radius: 50%;
-        background: var(--yellow);
-        box-shadow: 0 5px 16px rgba(147, 106, 20, .2);
-        color: #755815;
-        font: 22px "Bodoni Moda", Georgia, serif;
-      }
-
-      .art-illustration {
-        width: min(84%, 245px);
-        overflow: visible;
-        animation: garden-sway 7s ease-in-out infinite;
-      }
-
-      .art-caption {
-        position: absolute;
-        bottom: 19px;
-        left: 50%;
-        color: var(--blue);
-        font-size: 9px;
-        font-weight: 700;
-        letter-spacing: .14em;
-        text-transform: uppercase;
-        transform: translateX(-50%);
-        white-space: nowrap;
-      }
-
-      .art-bird {
-        position: absolute;
-        top: 42px;
-        left: 32px;
-        color: var(--blue);
-        font-size: 24px;
-        animation: bird-drift 8s ease-in-out infinite;
-      }
-
-      .art-fruit {
-        position: absolute;
-        right: -14px;
-        bottom: 30px;
-        font-size: 36px;
-        filter: drop-shadow(0 5px 4px rgba(40, 50, 40, .1));
-        transform: rotate(-12deg);
-      }
 
       .section-heading {
         display: flex;
@@ -485,32 +369,137 @@
           repeating-linear-gradient(0deg, #fff 0 26px, #f1f6fc 26px 52px);
       }
 
-      .aside-stamp {
-        align-self: flex-end;
+      .riskometer-panel {
         display: grid;
-        width: 76px;
-        height: 76px;
-        place-items: center;
-        border: 1px dashed #a77c20;
-        border-radius: 50%;
-        background: #fff7df;
-        color: #8b681b;
-        font: 13px/1.1 "Bodoni Moda", Georgia, serif;
+        gap: 8px;
         text-align: center;
-        transform: rotate(9deg);
       }
 
-      .aside-copy {
-        margin: auto 0;
+      .riskometer-panel[hidden],
+      .riskometer-empty[hidden] { display: none; }
+
+      .riskometer-title {
+        margin: 0;
         color: #3d5267;
-        font: 500 25px/1.16 "Bodoni Moda", Georgia, serif;
+        font: 500 20px/1.15 "Bodoni Moda", Georgia, serif;
       }
 
-      .aside-copy em {
-        display: block;
-        margin-top: 10px;
-        color: #a47719;
-        font: 24px/1 "Pinyon Script", cursive;
+      .riskometer-scheme {
+        margin: 0;
+        color: var(--muted);
+        font-size: 10px;
+        font-weight: 600;
+      }
+
+      .riskometer-gauge {
+        position: relative;
+        width: min(100%, 190px);
+        height: 112px;
+        margin: 3px auto 0;
+        overflow: hidden;
+      }
+
+      .riskometer-gauge::before {
+        position: absolute;
+        top: 0;
+        left: 50%;
+        width: 190px;
+        height: 190px;
+        border-radius: 50%;
+        background: conic-gradient(
+          from 270deg,
+          #719c69 0deg 30deg,
+          #9fb16e 30deg 60deg,
+          #c4b35e 60deg 90deg,
+          #d4a557 90deg 120deg,
+          #c77b50 120deg 150deg,
+          #a94949 150deg 180deg,
+          transparent 180deg 360deg
+        );
+        content: "";
+        transform: translateX(-50%);
+      }
+
+      .riskometer-gauge::after {
+        position: absolute;
+        top: 27px;
+        left: 50%;
+        width: 136px;
+        height: 136px;
+        border-radius: 50%;
+        background: #fff;
+        content: "";
+        transform: translateX(-50%);
+      }
+
+      .riskometer-needle {
+        position: absolute;
+        z-index: 1;
+        bottom: 17px;
+        left: calc(50% - 1px);
+        width: 2px;
+        height: 65px;
+        border-radius: 2px;
+        background: var(--ink);
+        transform: rotate(75deg);
+        transform-origin: 50% 100%;
+      }
+
+      .riskometer-needle::after {
+        position: absolute;
+        bottom: -4px;
+        left: -4px;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--ink);
+        content: "";
+      }
+
+      .riskometer-value {
+        position: absolute;
+        z-index: 2;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        color: #853b35;
+        font-size: 11px;
+        font-weight: 700;
+      }
+
+      .riskometer-scale {
+        display: flex;
+        justify-content: space-between;
+        margin-top: -3px;
+        color: var(--muted);
+        font-size: 9px;
+      }
+
+      .riskometer-source {
+        color: var(--blue);
+        font-size: 10px;
+        font-weight: 700;
+        text-underline-offset: 3px;
+      }
+
+      .riskometer-note {
+        margin: 0;
+        color: #657587;
+        font-size: 10px;
+        line-height: 1.45;
+      }
+
+      .riskometer-empty {
+        display: grid;
+        min-height: 138px;
+        align-content: center;
+        gap: 10px;
+      }
+
+      .riskometer-empty p {
+        margin: 0;
+        color: #3d5267;
+        font: 500 18px/1.3 "Bodoni Moda", Georgia, serif;
       }
 
       .privacy-note {
@@ -680,16 +669,6 @@
         text-align: center;
       }
 
-      @keyframes garden-sway {
-        0%, 100% { transform: rotate(-1deg); }
-        50% { transform: rotate(1deg); }
-      }
-
-      @keyframes bird-drift {
-        0%, 100% { transform: translate(0, 0); }
-        50% { transform: translate(7px, -5px); }
-      }
-
       @keyframes card-arrive {
         from { opacity: 0; transform: translateY(7px); }
         to { opacity: 1; transform: translateY(0); }
@@ -701,16 +680,6 @@
         .site-header { min-height: 74px; }
         .site-nav { display: none; }
         .facts-badge { padding: 7px 9px; font-size: 8px; }
-        .hero {
-          grid-template-columns: 1fr;
-          gap: 8px;
-          padding-block: 48px 27px;
-        }
-        h1 { max-width: 560px; font-size: clamp(43px, 12vw, 62px); }
-        .hero-copy { max-width: 520px; font-size: 18px; }
-        .hero-art { min-height: 230px; }
-        .art-card { width: min(76%, 310px); min-height: 215px; }
-        .art-illustration { width: min(78%, 205px); }
         .section-heading { align-items: flex-start; flex-direction: column; gap: 8px; }
         .assistant-section { padding-block: 34px 42px; }
         .assistant-section .section-heading h2 { font-size: clamp(36px, 10vw, 48px); }
@@ -722,8 +691,6 @@
           border-top: 1px solid #dce5ed;
           border-left: 0;
         }
-        .aside-copy { margin: 0; font-size: 21px; }
-        .aside-stamp { flex: 0 0 60px; width: 60px; height: 60px; font-size: 11px; }
         .form-row { justify-content: stretch; }
         .ask-button { width: 100%; }
         .source-grid { grid-template-columns: 1fr; }
@@ -815,9 +782,22 @@
                 <p class="response-error" id="error" role="alert"></p>
               </section>
             </div>
-            <aside class="assistant-aside" aria-label="Privacy reminder">
-              <span class="aside-stamp" aria-hidden="true">Diana's<br>garden<br>archive</span>
-              <p class="aside-copy">A small guide to the facts.<em>Con cura</em></p>
+            <aside class="assistant-aside" aria-label="Scheme riskometer and privacy reminder">
+              <div class="riskometer-empty" id="riskometer-empty">
+                <span class="card-kicker">Source-reported riskometer</span>
+                <p>Ask about a listed scheme to see its published risk category.</p>
+              </div>
+              <section class="riskometer-panel" id="riskometer" aria-labelledby="riskometer-title" hidden>
+                <h3 class="riskometer-title" id="riskometer-title">Source-reported riskometer</h3>
+                <p class="riskometer-scheme" id="riskometer-scheme"></p>
+                <div class="riskometer-gauge" role="img" aria-label="Riskometer category: Very High Risk">
+                  <span class="riskometer-needle" aria-hidden="true"></span>
+                  <span class="riskometer-value" id="riskometer-value">Very High Risk</span>
+                </div>
+                <div class="riskometer-scale" aria-hidden="true"><span>Low</span><span>Very High</span></div>
+                <a class="riskometer-source" id="riskometer-source" target="_blank" rel="noopener noreferrer"></a>
+                <p class="riskometer-note">This is the source’s risk classification—not performance, a safety guarantee, or a recommendation. Check the linked page for the latest category.</p>
+              </section>
               <p class="privacy-note">Facts only, no investment advice. Don’t enter PAN, Aadhaar, account numbers, OTPs, phone numbers, or email addresses.</p>
             </aside>
           </div>
@@ -850,32 +830,6 @@
           </div>
         </section>
 
-        <section class="hero container" aria-labelledby="page-title">
-          <div>
-            <span class="eyebrow">A little Italian garden of facts</span>
-            <h1 id="page-title">A little clarity for your <em>fund questions</em></h1>
-            <p class="hero-copy">Find concise answers to factual questions about HDFC mutual fund schemes, with a link back to the source page.</p>
-            <span class="script-note">Benvenuti, ask away</span>
-          </div>
-          <div class="hero-art" aria-hidden="true">
-            <span class="art-bird">⌁</span>
-            <div class="art-card">
-              <span class="art-seal">D<br>✦</span>
-              <svg class="art-illustration" viewBox="0 0 260 205" fill="none">
-                <path d="M133 174c-4-45 3-81 29-119M133 151c-28-15-44-35-55-64M141 140c27-8 47-24 64-48M126 127c-12-28-15-49-9-76" stroke="#557959" stroke-width="3" stroke-linecap="round"/>
-                <path d="M161 72c-19 0-30-10-33-22 17-5 31 1 36 16M171 111c16-16 31-16 42-9-7 15-21 22-38 17M91 96c14-8 26-5 34 4-9 12-22 14-35 5M112 70c-4-15 1-27 12-34 9 12 8 26-1 38" fill="#a5c69c" stroke="#557959" stroke-width="2" stroke-linejoin="round"/>
-                <path d="M74 95c-7-8-19-7-25 1-7 10 0 24 12 24 12 0 20-14 13-25ZM204 97c-6-8-18-8-24 0-7 10 0 24 12 24 12 0 20-14 12-24Z" fill="#f5cc61" stroke="#cf9d2d" stroke-width="2"/>
-                <path d="M63 101c-3 5-3 9 0 13M194 103c-3 5-3 9 0 13" stroke="#fff2c4" stroke-width="2" stroke-linecap="round"/>
-                <path d="M102 164c20-12 42-13 65 0l11 22H89l13-22Z" fill="#dceafa" stroke="#315d91" stroke-width="2"/>
-                <path d="M105 164c9-14 19-20 29-20s20 6 29 20" stroke="#315d91" stroke-width="2"/>
-                <path d="M123 186v-13h22v13" stroke="#315d91" stroke-width="2"/>
-              </svg>
-              <span class="art-caption">Citrus · sunshine · clear facts</span>
-            </div>
-            <span class="art-fruit">🍊</span>
-          </div>
-        </section>
-
         <section class="container disclaimer" aria-label="Disclaimer">
           <span class="disclaimer-icon" aria-hidden="true">✦</span>
           <div>
@@ -899,6 +853,17 @@
       const updated = document.querySelector("#updated");
       const errorMessage = document.querySelector("#error");
       const followups = document.querySelector("#followups");
+      const riskometer = document.querySelector("#riskometer");
+      const riskometerEmpty = document.querySelector("#riskometer-empty");
+      const riskometerScheme = document.querySelector("#riskometer-scheme");
+      const riskometerSource = document.querySelector("#riskometer-source");
+
+      const riskometerBySource = new Map([
+        ["https://groww.in/mutual-funds/hdfc-large-cap-fund-direct-growth", "Very High Risk"],
+        ["https://groww.in/mutual-funds/hdfc-equity-fund-direct-growth", "Very High Risk"],
+        ["https://groww.in/mutual-funds/hdfc-elss-tax-saver-fund-direct-plan-growth", "Very High Risk"],
+        ["https://groww.in/mutual-funds/hdfc-mid-cap-fund-direct-growth", "Very High Risk"]
+      ]);
 
       document.querySelectorAll("[data-question]").forEach((button) => {
         button.addEventListener("click", () => {
@@ -919,6 +884,13 @@
         source.hidden = true;
         followups.hidden = true;
         followups.replaceChildren();
+        riskometer.hidden = true;
+        riskometerEmpty.hidden = false;
+        riskometerEmpty.querySelector("p").textContent =
+          "Ask about a listed scheme to see its published risk category.";
+        riskometerScheme.textContent = "";
+        riskometerSource.removeAttribute("href");
+        riskometerSource.textContent = "";
         submitButton.disabled = true;
         submitButton.querySelector("span").textContent = "Finding an answer…";
 
@@ -964,6 +936,17 @@
           const sourceTitle = sourceCard?.querySelector(".source-title")?.textContent?.trim();
           source.textContent = sourceTitle ? `Source: ${sourceTitle} ↗` : "View source page ↗";
           source.hidden = false;
+          const riskCategory = riskometerBySource.get(sourceUrl.href);
+          if (sourceTitle && riskCategory) {
+            riskometerScheme.textContent = sourceTitle;
+            riskometerSource.href = sourceUrl.href;
+            riskometerSource.textContent = `Source: ${sourceTitle} ↗`;
+            riskometer.hidden = false;
+            riskometerEmpty.hidden = true;
+          } else {
+            riskometerEmpty.querySelector("p").textContent =
+              "A scheme-specific riskometer isn’t available for this source.";
+          }
           if (sourceTitle && sourceTitle !== "HDFC Mutual Fund overview") {
             scheme.textContent = `Relevant scheme: ${sourceTitle}`;
           } else if (sourceTitle) {
