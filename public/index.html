@@ -301,45 +301,6 @@
         transform: rotate(-12deg);
       }
 
-      .stats {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 14px;
-        margin-bottom: 52px;
-      }
-
-      .stat-card {
-        display: flex;
-        min-height: 112px;
-        align-items: center;
-        gap: 16px;
-        padding: 18px 22px;
-        border: 1px solid #dae4ed;
-        border-radius: 16px;
-        background: rgba(255,255,255,.95);
-        box-shadow: 0 8px 22px rgba(49, 93, 145, .055);
-      }
-
-      .stat-number {
-        color: var(--blue);
-        font: 600 42px/.95 "Bodoni Moda", Georgia, serif;
-        letter-spacing: -.04em;
-      }
-
-      .stat-label {
-        display: block;
-        color: var(--ink);
-        font-size: 12px;
-        font-weight: 700;
-      }
-
-      .stat-detail {
-        display: block;
-        margin-top: 4px;
-        color: var(--muted);
-        font: 15px/1.25 "EB Garamond", Georgia, serif;
-      }
-
       .section-heading {
         display: flex;
         align-items: end;
@@ -361,7 +322,16 @@
         font: 17px/1.4 "EB Garamond", Georgia, serif;
       }
 
-      .assistant-section { padding-bottom: 64px; }
+      .assistant-section { padding-block: 48px 56px; }
+
+      .assistant-section .section-heading {
+        align-items: flex-start;
+        margin-bottom: 22px;
+      }
+
+      .assistant-section .section-heading h2 {
+        font-size: clamp(38px, 5vw, 54px);
+      }
 
       .assistant-card {
         display: grid;
@@ -399,13 +369,8 @@
         font-size: 14px;
       }
 
-      .assistant-title {
-        margin: 11px 0 4px;
-        font: 500 31px/1.15 "Bodoni Moda", Georgia, serif;
-      }
-
       .assistant-subtitle {
-        margin-bottom: 22px;
+        margin: 12px 0 22px;
         color: var(--muted);
         font: 17px/1.4 "EB Garamond", Georgia, serif;
       }
@@ -429,10 +394,11 @@
       }
 
       textarea {
-        min-height: 116px;
-        padding: 14px 15px;
+        min-height: 122px;
+        padding: 16px 18px;
         resize: vertical;
-        font: 17px/1.5 "EB Garamond", Georgia, serif;
+        font: 20px/1.5 "EB Garamond", Georgia, serif;
+        box-shadow: 0 4px 14px rgba(49, 93, 145, .06);
       }
 
       textarea::placeholder { color: #8190a0; }
@@ -456,14 +422,14 @@
       }
 
       .quick-question {
-        min-height: 32px;
-        padding: 6px 11px;
+        min-height: 38px;
+        padding: 8px 13px;
         border: 1px solid #d4dfeb;
-        border-radius: 999px;
+        border-radius: 10px;
         background: #fff;
         color: #4a627c;
         cursor: pointer;
-        font-size: 10px;
+        font-size: 11px;
         transition: background-color .18s ease, border-color .18s ease, transform .18s ease;
       }
 
@@ -474,19 +440,19 @@
       }
 
       .form-row {
-        display: grid;
-        grid-template-columns: 1fr;
-        align-items: end;
+        display: flex;
+        justify-content: flex-end;
         gap: 12px;
       }
 
       .ask-button {
         display: inline-flex;
-        min-height: 48px;
+        min-height: 52px;
         align-items: center;
         justify-content: center;
         gap: 10px;
-        padding: 0 22px;
+        min-width: 190px;
+        padding: 0 24px;
         border: 1px solid #e2b83f;
         border-radius: 10px;
         background: var(--yellow);
@@ -574,10 +540,17 @@
         text-transform: uppercase;
       }
 
+      .response-scheme {
+        margin: 0 0 10px;
+        color: #4a627c;
+        font-size: 11px;
+        font-weight: 700;
+      }
+
       .response-answer {
         margin: 0;
         color: #243648;
-        font: 18px/1.55 "EB Garamond", Georgia, serif;
+        font: 21px/1.5 "EB Garamond", Georgia, serif;
         white-space: pre-wrap;
       }
 
@@ -585,18 +558,27 @@
         display: flex;
         flex-wrap: wrap;
         align-items: center;
-        gap: 8px 18px;
+        gap: 10px 18px;
         margin-top: 15px;
-        padding-top: 12px;
+        padding-top: 14px;
         border-top: 1px solid #dce5ec;
         color: #657587;
-        font-size: 10px;
+        font-size: 11px;
       }
 
       .response-meta a {
         font-weight: 700;
         text-underline-offset: 3px;
       }
+
+      .follow-up-questions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 15px;
+      }
+
+      .follow-up-questions[hidden] { display: none; }
 
       .response-error {
         margin: 12px 0 0;
@@ -606,7 +588,7 @@
 
       .response-error:empty { display: none; }
 
-      .sources-section, .pipeline-section { padding-bottom: 64px; }
+      .sources-section { padding-bottom: 64px; }
 
       .source-grid {
         display: grid;
@@ -652,49 +634,6 @@
       .source-arrow {
         color: var(--blue);
         font-size: 18px;
-      }
-
-      .pipeline {
-        display: grid;
-        grid-template-columns: repeat(5, minmax(0, 1fr));
-        gap: 12px;
-        counter-reset: stages;
-      }
-
-      .pipeline-step {
-        position: relative;
-        min-height: 154px;
-        padding: 18px 15px;
-        border: 1px solid #d9e3ed;
-        border-radius: 14px;
-        background: #fff;
-        counter-increment: stages;
-      }
-
-      .pipeline-step::before {
-        display: grid;
-        width: 31px;
-        height: 31px;
-        margin-bottom: 18px;
-        place-items: center;
-        border-radius: 50%;
-        background: var(--blue);
-        color: #fff;
-        content: counter(stages, decimal-leading-zero);
-        font: 600 13px "Bodoni Moda", Georgia, serif;
-      }
-
-      .pipeline-step:nth-child(even)::before { background: #bd9130; }
-
-      .pipeline-step h3 {
-        margin-bottom: 5px;
-        font: 500 19px/1.1 "Bodoni Moda", Georgia, serif;
-      }
-
-      .pipeline-step p {
-        margin: 0;
-        color: var(--muted);
-        font: 14px/1.35 "EB Garamond", Georgia, serif;
       }
 
       .disclaimer {
@@ -772,19 +711,9 @@
         .hero-art { min-height: 230px; }
         .art-card { width: min(76%, 310px); min-height: 215px; }
         .art-illustration { width: min(78%, 205px); }
-        .stats { gap: 8px; margin-bottom: 42px; }
-        .stat-card {
-          min-height: 98px;
-          flex-direction: column;
-          align-items: flex-start;
-          justify-content: center;
-          gap: 7px;
-          padding: 12px;
-        }
-        .stat-number { font-size: 34px; }
-        .stat-label { font-size: 10px; }
-        .stat-detail { font-size: 13px; }
         .section-heading { align-items: flex-start; flex-direction: column; gap: 8px; }
+        .assistant-section { padding-block: 34px 42px; }
+        .assistant-section .section-heading h2 { font-size: clamp(36px, 10vw, 48px); }
         .assistant-card { grid-template-columns: 1fr; }
         .assistant-aside {
           min-height: 130px;
@@ -795,23 +724,20 @@
         }
         .aside-copy { margin: 0; font-size: 21px; }
         .aside-stamp { flex: 0 0 60px; width: 60px; height: 60px; font-size: 11px; }
-        .form-row { grid-template-columns: 1fr; }
+        .form-row { justify-content: stretch; }
         .ask-button { width: 100%; }
         .source-grid { grid-template-columns: 1fr; }
-        .pipeline { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-        .pipeline-step:last-child { grid-column: 1 / -1; min-height: 126px; }
-        .sources-section, .pipeline-section { padding-bottom: 48px; }
+        .sources-section { padding-bottom: 48px; }
       }
 
       @media (max-width: 390px) {
         .container { width: calc(100% - 26px); }
         .brand-name { font-size: 22px; }
         .brand-mark { width: 37px; height: 37px; }
-        .stats { grid-template-columns: 1fr; }
-        .stat-card { min-height: 76px; flex-direction: row; align-items: center; }
-        .stat-number { min-width: 48px; }
-        .pipeline { grid-template-columns: 1fr; }
-        .pipeline-step, .pipeline-step:last-child { min-height: 0; grid-column: auto; }
+        .quick-questions, .follow-up-questions { gap: 7px; }
+        .quick-question { width: 100%; text-align: left; }
+        .response { padding: 16px; }
+        .response-answer { font-size: 19px; }
       }
 
       @media (prefers-reduced-motion: reduce) {
@@ -844,12 +770,86 @@
         <nav class="site-nav" aria-label="Main navigation">
           <a href="#assistant">Ask a question</a>
           <a href="#schemes">Sources</a>
-          <a href="#pipeline">How it works</a>
         </nav>
         <span class="facts-badge">Facts only · No advice</span>
       </header>
 
       <main>
+        <section class="assistant-section container" id="assistant" aria-labelledby="assistant-heading">
+          <div class="section-heading">
+            <div>
+              <span class="eyebrow">The question desk</span>
+              <h2 id="assistant-heading">What would you like to know?</h2>
+            </div>
+            <p>Ask naturally, in your own words. Name the scheme when it matters; answers include a source link and date.</p>
+          </div>
+          <div class="assistant-card">
+            <div class="assistant-main">
+              <span class="card-kicker"><span class="stamp" aria-hidden="true">✦</span> Verified-source assistant</span>
+              <p class="assistant-subtitle">Ask about expense ratio, exit load, minimum SIP, lock-in, riskometer, benchmark, fund managers, and other facts on these pages.</p>
+              <form id="question-form">
+                <label for="question">Your question</label>
+                <textarea id="question" name="question" maxlength="500" required placeholder="Ask Growfolio anything factual..."></textarea>
+                <div class="quick-questions" aria-label="Example questions">
+                  <button class="quick-question" type="button" data-question="What is the minimum SIP amount?">What is the minimum SIP amount?</button>
+                  <button class="quick-question" type="button" data-question="What is the expense ratio?">What is the expense ratio?</button>
+                  <button class="quick-question" type="button" data-question="What is the ELSS lock-in period?">What is the ELSS lock-in period?</button>
+                  <button class="quick-question" type="button" data-question="What is the exit load?">What is the exit load?</button>
+                </div>
+                <div class="form-row">
+                  <button class="ask-button" id="submit" type="submit">
+                    <span>Send question</span><span class="arrow" aria-hidden="true">→</span>
+                  </button>
+                </div>
+              </form>
+
+              <section class="response" id="result" aria-live="polite" aria-atomic="true" hidden>
+                <p class="response-label">Your Answer</p>
+                <p class="response-scheme" id="scheme"></p>
+                <p class="response-answer" id="answer"></p>
+                <div class="response-meta">
+                  <a id="source" target="_blank" rel="noopener noreferrer" hidden></a>
+                  <span id="updated"></span>
+                </div>
+                <div class="follow-up-questions" id="followups" aria-label="Related questions" hidden></div>
+                <p class="response-error" id="error" role="alert"></p>
+              </section>
+            </div>
+            <aside class="assistant-aside" aria-label="Privacy reminder">
+              <span class="aside-stamp" aria-hidden="true">Diana's<br>garden<br>archive</span>
+              <p class="aside-copy">A small guide to the facts.<em>Con cura</em></p>
+              <p class="privacy-note">Facts only, no investment advice. Don’t enter PAN, Aadhaar, account numbers, OTPs, phone numbers, or email addresses.</p>
+            </aside>
+          </div>
+        </section>
+
+        <section class="sources-section container" id="schemes" aria-labelledby="sources-heading">
+          <div class="section-heading">
+            <div>
+              <span class="eyebrow">The source garden</span>
+              <h2 id="sources-heading">Explore the Source Library</h2>
+            </div>
+            <p>The assistant can cite only these allowlisted public pages. Links open the listed pages directly.</p>
+          </div>
+          <div class="source-grid">
+            <a class="source-card" href="https://groww.in/mutual-funds/amc/hdfc-mutual-funds" target="_blank" rel="noopener noreferrer">
+              <span><span class="source-title">HDFC Mutual Fund overview</span><span class="source-type">AMC overview · Groww</span></span><span class="source-arrow" aria-hidden="true">↗</span>
+            </a>
+            <a class="source-card" href="https://groww.in/mutual-funds/hdfc-large-cap-fund-direct-growth" target="_blank" rel="noopener noreferrer">
+              <span><span class="source-title">HDFC Large Cap Fund Direct Growth</span><span class="source-type">Large Cap · Groww</span></span><span class="source-arrow" aria-hidden="true">↗</span>
+            </a>
+            <a class="source-card" href="https://groww.in/mutual-funds/hdfc-equity-fund-direct-growth" target="_blank" rel="noopener noreferrer">
+              <span><span class="source-title">HDFC Flexi Cap Direct Plan Growth</span><span class="source-type">Flexi Cap · Groww</span></span><span class="source-arrow" aria-hidden="true">↗</span>
+            </a>
+            <a class="source-card" href="https://groww.in/mutual-funds/hdfc-elss-tax-saver-fund-direct-plan-growth" target="_blank" rel="noopener noreferrer">
+              <span><span class="source-title">HDFC ELSS Tax Saver Fund Direct Plan Growth</span><span class="source-type">ELSS · Groww</span></span><span class="source-arrow" aria-hidden="true">↗</span>
+            </a>
+            <a class="source-card" href="https://groww.in/mutual-funds/hdfc-mid-cap-fund-direct-growth" target="_blank" rel="noopener noreferrer">
+              <span><span class="source-title">HDFC Mid Cap Fund Direct Growth</span><span class="source-type">Mid Cap · Groww</span></span><span class="source-arrow" aria-hidden="true">↗</span>
+            </a>
+          </div>
+        </section>
+
         <section class="hero container" aria-labelledby="page-title">
           <div>
             <span class="eyebrow">A little Italian garden of facts</span>
@@ -876,113 +876,6 @@
           </div>
         </section>
 
-        <section class="stats container" aria-label="Corpus overview">
-          <article class="stat-card">
-            <span class="stat-number">05</span>
-            <span><span class="stat-label">Approved source pages</span><span class="stat-detail">A fixed, no-crawl collection</span></span>
-          </article>
-          <article class="stat-card">
-            <span class="stat-number">04</span>
-            <span><span class="stat-label">HDFC schemes</span><span class="stat-detail">Large, Flexi, ELSS &amp; Mid Cap</span></span>
-          </article>
-          <article class="stat-card">
-            <span class="stat-number">05</span>
-            <span><span class="stat-label">RAG pipeline steps</span><span class="stat-detail">Load through retrieval &amp; citation</span></span>
-          </article>
-        </section>
-
-        <section class="assistant-section container" id="assistant" aria-labelledby="assistant-heading">
-          <div class="section-heading">
-            <div>
-              <span class="eyebrow">The question desk</span>
-              <h2 id="assistant-heading">Ask the HDFC fund archive</h2>
-            </div>
-            <p>Ask naturally, in your own words. Name the scheme when it matters; answers include a source link and date.</p>
-          </div>
-          <div class="assistant-card">
-            <div class="assistant-main">
-              <span class="card-kicker"><span class="stamp" aria-hidden="true">✦</span> Verified-source assistant</span>
-              <h3 class="assistant-title">What would you like to know?</h3>
-              <p class="assistant-subtitle">Ask about expense ratio, exit load, minimum SIP, lock-in, riskometer, benchmark, fund managers, and other facts on these pages.</p>
-              <form id="question-form">
-                <label for="question">Your question</label>
-                <textarea id="question" name="question" maxlength="500" required placeholder="Example: I’m looking at HDFC Large Cap. Who manages this fund?"></textarea>
-                <div class="quick-questions" aria-label="Example questions">
-                  <button class="quick-question" type="button" data-question="What is the expense ratio for HDFC Large Cap Fund?">Expense ratio</button>
-                  <button class="quick-question" type="button" data-question="What is the exit load for HDFC Mid Cap Fund?">Exit load</button>
-                  <button class="quick-question" type="button" data-question="What is the minimum SIP for HDFC Flexi Cap Fund?">Minimum SIP</button>
-                  <button class="quick-question" type="button" data-question="What is the lock-in period for HDFC ELSS Tax Saver Fund?">ELSS lock-in</button>
-                  <button class="quick-question" type="button" data-question="What is the riskometer for HDFC Mid Cap Fund?">Riskometer</button>
-                </div>
-                <div class="form-row">
-                  <button class="ask-button" id="submit" type="submit">
-                    <span>Ask the archive</span><span class="arrow" aria-hidden="true">→</span>
-                  </button>
-                </div>
-              </form>
-
-              <section class="response" id="result" aria-live="polite" aria-atomic="true" hidden>
-                <p class="response-label">A note from the archive</p>
-                <p class="response-answer" id="answer"></p>
-                <div class="response-meta">
-                  <a id="source" target="_blank" rel="noopener noreferrer" hidden>View source page ↗</a>
-                  <span id="updated"></span>
-                </div>
-                <p class="response-error" id="error" role="alert"></p>
-              </section>
-            </div>
-            <aside class="assistant-aside" aria-label="Privacy reminder">
-              <span class="aside-stamp" aria-hidden="true">Diana's<br>garden<br>archive</span>
-              <p class="aside-copy">A small guide to the facts.<em>Con cura</em></p>
-              <p class="privacy-note">Facts only, no investment advice. Don’t enter PAN, Aadhaar, account numbers, OTPs, phone numbers, or email addresses.</p>
-            </aside>
-          </div>
-        </section>
-
-        <section class="sources-section container" id="schemes" aria-labelledby="sources-heading">
-          <div class="section-heading">
-            <div>
-              <span class="eyebrow">The source garden</span>
-              <h2 id="sources-heading">Five pages, no link crawling</h2>
-            </div>
-            <p>The assistant can cite only these allowlisted public pages. Links open the listed pages directly.</p>
-          </div>
-          <div class="source-grid">
-            <a class="source-card" href="https://groww.in/mutual-funds/amc/hdfc-mutual-funds" target="_blank" rel="noopener noreferrer">
-              <span><span class="source-title">HDFC Mutual Fund overview</span><span class="source-type">AMC overview · Groww</span></span><span class="source-arrow" aria-hidden="true">↗</span>
-            </a>
-            <a class="source-card" href="https://groww.in/mutual-funds/hdfc-large-cap-fund-direct-growth" target="_blank" rel="noopener noreferrer">
-              <span><span class="source-title">HDFC Large Cap Fund Direct Growth</span><span class="source-type">Large Cap · Groww</span></span><span class="source-arrow" aria-hidden="true">↗</span>
-            </a>
-            <a class="source-card" href="https://groww.in/mutual-funds/hdfc-equity-fund-direct-growth" target="_blank" rel="noopener noreferrer">
-              <span><span class="source-title">HDFC Flexi Cap Direct Plan Growth</span><span class="source-type">Flexi Cap · Groww</span></span><span class="source-arrow" aria-hidden="true">↗</span>
-            </a>
-            <a class="source-card" href="https://groww.in/mutual-funds/hdfc-elss-tax-saver-fund-direct-plan-growth" target="_blank" rel="noopener noreferrer">
-              <span><span class="source-title">HDFC ELSS Tax Saver Fund Direct Plan Growth</span><span class="source-type">ELSS · Groww</span></span><span class="source-arrow" aria-hidden="true">↗</span>
-            </a>
-            <a class="source-card" href="https://groww.in/mutual-funds/hdfc-mid-cap-fund-direct-growth" target="_blank" rel="noopener noreferrer">
-              <span><span class="source-title">HDFC Mid Cap Fund Direct Growth</span><span class="source-type">Mid Cap · Groww</span></span><span class="source-arrow" aria-hidden="true">↗</span>
-            </a>
-          </div>
-        </section>
-
-        <section class="pipeline-section container" id="pipeline" aria-labelledby="pipeline-heading">
-          <div class="section-heading">
-            <div>
-              <span class="eyebrow">Behind the answer</span>
-              <h2 id="pipeline-heading">From public page to cited fact</h2>
-            </div>
-            <p>The ingestion stages are stored as inspectable artifacts; retrieval uses the same TF-IDF vocabulary and bundled index.</p>
-          </div>
-          <div class="pipeline">
-            <article class="pipeline-step"><h3>Load</h3><p>Fetch only the five configured public pages and validate them.</p></article>
-            <article class="pipeline-step"><h3>Chunk</h3><p>Split page text into traceable, scheme-specific excerpts.</p></article>
-            <article class="pipeline-step"><h3>Embed</h3><p>Encode chunks with the configured embedding model.</p></article>
-            <article class="pipeline-step"><h3>Index</h3><p>Bundle the sparse TF-IDF vectors and source metadata with the app.</p></article>
-            <article class="pipeline-step"><h3>Retrieve &amp; cite</h3><p>Find relevant evidence and attach its source URL and fetch date.</p></article>
-          </div>
-        </section>
-
         <section class="container disclaimer" aria-label="Disclaimer">
           <span class="disclaimer-icon" aria-hidden="true">✦</span>
           <div>
@@ -1002,8 +895,10 @@
       const result = document.querySelector("#result");
       const answer = document.querySelector("#answer");
       const source = document.querySelector("#source");
+      const scheme = document.querySelector("#scheme");
       const updated = document.querySelector("#updated");
       const errorMessage = document.querySelector("#error");
+      const followups = document.querySelector("#followups");
 
       document.querySelectorAll("[data-question]").forEach((button) => {
         button.addEventListener("click", () => {
@@ -1020,9 +915,12 @@
         answer.textContent = "";
         errorMessage.textContent = "";
         updated.textContent = "";
+        scheme.textContent = "";
         source.hidden = true;
+        followups.hidden = true;
+        followups.replaceChildren();
         submitButton.disabled = true;
-        submitButton.querySelector("span").textContent = "Searching the archive…";
+        submitButton.querySelector("span").textContent = "Finding an answer…";
 
         try {
           const response = await fetch("/api/answer", {
@@ -1061,14 +959,43 @@
           }
           answer.textContent = payload.answer;
           source.href = sourceUrl.href;
+          const sourceCard = [...document.querySelectorAll(".source-card")]
+            .find((card) => card.href === sourceUrl.href);
+          const sourceTitle = sourceCard?.querySelector(".source-title")?.textContent?.trim();
+          source.textContent = sourceTitle ? `Source: ${sourceTitle} ↗` : "View source page ↗";
           source.hidden = false;
+          if (sourceTitle && sourceTitle !== "HDFC Mutual Fund overview") {
+            scheme.textContent = `Relevant scheme: ${sourceTitle}`;
+          } else if (sourceTitle) {
+            scheme.textContent = `Relevant source: ${sourceTitle}`;
+          }
           updated.textContent = `Last updated from sources: ${payload.last_updated}`;
+
+          if (sourceTitle && sourceTitle !== "HDFC Mutual Fund overview") {
+            const relatedQuestions = [
+              `What is the expense ratio for ${sourceTitle}?`,
+              `What is the exit load for ${sourceTitle}?`,
+              `What is the minimum SIP amount for ${sourceTitle}?`
+            ];
+            relatedQuestions.forEach((question) => {
+              const button = document.createElement("button");
+              button.className = "quick-question";
+              button.type = "button";
+              button.textContent = question;
+              button.addEventListener("click", () => {
+                questionField.value = question;
+                questionField.focus();
+              });
+              followups.append(button);
+            });
+            followups.hidden = false;
+          }
         } catch (error) {
           errorMessage.textContent =
             error instanceof Error ? error.message : "The request could not be completed.";
         } finally {
           submitButton.disabled = false;
-          submitButton.querySelector("span").textContent = "Ask the archive";
+          submitButton.querySelector("span").textContent = "Send question";
         }
       });
     </script>
